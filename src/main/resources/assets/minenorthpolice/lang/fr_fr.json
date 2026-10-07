@@ -1,0 +1,10 @@
+{
+ "item.minenorthpolice.tablette_police": "Tablette de police",
+ "item.minenorthpolice.radar_main": "Radar à main",
+ "block.minenorthpolice.radar_fixe": "Radar fixe",
+ "item.minenorthpolice.test_salivaire": "Test salivaire",
+ "item.minenorthpolice.detecteur_metaux": "Détecteur de métaux",
+ "item.minenorthpolice.taser": "Taser",
+ "item.minenorthpolice.cartouche_taser": "Cartouche de taser",
+ "itemGroup.minenorthpolice": "Police MineNorth"
+}

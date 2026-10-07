@@ -1,0 +1,27 @@
+{
+ "loader": "forge:separate_transforms",
+ "gui_light": "front",
+ "base": {
+  "parent": "minenorthpolice:item/taser_3d"
+ },
+ "perspectives": {
+  "gui": {
+   "parent": "minecraft:item/generated",
+   "textures": {
+    "layer0": "minenorthpolice:item/taser"
+   }
+  },
+  "fixed": {
+   "parent": "minecraft:item/generated",
+   "textures": {
+    "layer0": "minenorthpolice:item/taser"
+   }
+  },
+  "ground": {
+   "parent": "minecraft:item/generated",
+   "textures": {
+    "layer0": "minenorthpolice:item/taser"
+   }
+  }
+ }
+}

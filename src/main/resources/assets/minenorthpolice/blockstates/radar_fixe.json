@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "minenorthpolice:block/radar_fixe"
+  },
+  "facing=east": {
+   "model": "minenorthpolice:block/radar_fixe",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "minenorthpolice:block/radar_fixe",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "minenorthpolice:block/radar_fixe",
+   "y": 270
+  }
+ }
+}

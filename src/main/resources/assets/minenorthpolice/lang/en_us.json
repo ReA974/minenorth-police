@@ -1,0 +1,10 @@
+{
+ "item.minenorthpolice.tablette_police": "Police Tablet",
+ "item.minenorthpolice.radar_main": "Speed Radar Gun",
+ "block.minenorthpolice.radar_fixe": "Speed Camera",
+ "item.minenorthpolice.test_salivaire": "Saliva Drug Test",
+ "item.minenorthpolice.detecteur_metaux": "Metal Detector",
+ "item.minenorthpolice.taser": "Taser",
+ "item.minenorthpolice.cartouche_taser": "Taser Cartridge",
+ "itemGroup.minenorthpolice": "MineNorth Police"
+}

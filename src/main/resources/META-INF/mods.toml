@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+[[mods]]
+modId="minenorthpolice"
+version="1.0.0"
+displayName="MineNorth Police"
+authors="MineNorth RP"
+description='''Police MineNorth RP : tablette, casier judiciaire, amendes, perquisitions, grades, radars (MTS), test salivaire, détecteur de métaux, taser.'''
+[[dependencies.minenorthpolice]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.minenorthpolice]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21)"
+ordering="NONE"
+side="BOTH"
+[[dependencies.minenorthpolice]]
+modId="minenorth_eurobank"
+mandatory=true
+versionRange="[1.0.0,2)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.minenorthpolice]]
+modId="minenorthapi"
+mandatory=true
+versionRange="[1.0.0,2)"
+ordering="AFTER"
+side="BOTH"
