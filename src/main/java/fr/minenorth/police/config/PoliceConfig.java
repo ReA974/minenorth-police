@@ -113,6 +113,8 @@ public final class PoliceConfig {
     public static PoliceConfig get() { return current; }
 
     public static boolean load() {
+        // Config côté serveur uniquement : le client ne crée ni ne lit aucun fichier.
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist != net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER) return true;
         Path f = FMLPaths.CONFIGDIR.get().resolve("minenorth_police.json");
         boolean ok = true;
         try {
