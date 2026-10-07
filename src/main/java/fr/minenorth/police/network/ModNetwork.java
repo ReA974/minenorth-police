@@ -26,10 +26,12 @@ public final class ModNetwork {
             A_WANTED = 9, A_REQUEST = 10, A_DECIDE = 11, A_SEIZE = 12, A_GRADE = 13, A_CLOSE = 14,
             A_RADARS = 15, A_FLASH_DELETE = 16, A_PLATES = 17,
             /** Ouvre le bureau du mod Accueil Police (plaintes, rendez-vous, objets trouvés, fourrière). */
-            A_DESK = 18;
+            A_DESK = 18,
+            /** Garde à vue (n = 0) ou prison (n = 1) de m minutes, motif a. */
+            A_JAIL = 19, A_RELEASE = 20;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "3";
+    private static final String PROTOCOL = "4";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -58,19 +60,22 @@ public final class ModNetwork {
             return new RecView(b.readVarInt(), b.readVarInt(), b.readLong(), b.readUtf(), b.readUtf(), b.readLong(), b.readVarInt(), b.readBoolean());
         }
     }
-    /** identity : {prénom, nom, naissance, lieu, nationalité, n° carte} ou liste vide. points : -1 = mod Permis absent. */
+    /** identity : {prénom, nom, naissance, lieu, nationalité, n° carte} ou liste vide. points : -1 = mod Permis absent.
+     *  jailType : -1 = libre, sinon garde à vue / prison (PoliceData.JAIL_*), jailMinutes restantes dans la cellule jailCell. */
     public record Dossier(UUID id, String name, List<String> identity, boolean online, boolean near, String wantedReason, int points,
                           List<String> licences, List<String> impound, List<RecView> records, int searchMinutes, long unpaid,
-                          boolean permisMod, boolean vehiclesMod, List<String> vehicles) {
+                          boolean permisMod, boolean vehiclesMod, List<String> vehicles, int jailType, int jailMinutes, String jailCell) {
         static void encode(FriendlyByteBuf b, Dossier d) {
             b.writeUUID(d.id); b.writeUtf(d.name); strings(b, d.identity); b.writeBoolean(d.online); b.writeBoolean(d.near);
             b.writeUtf(d.wantedReason); b.writeInt(d.points); strings(b, d.licences); strings(b, d.impound);
             b.writeCollection(d.records, RecView::encode); b.writeVarInt(d.searchMinutes); b.writeLong(d.unpaid);
             b.writeBoolean(d.permisMod); b.writeBoolean(d.vehiclesMod); strings(b, d.vehicles);
+            b.writeInt(d.jailType); b.writeVarInt(d.jailMinutes); b.writeUtf(d.jailCell);
         }
         static Dossier decode(FriendlyByteBuf b) {
             return new Dossier(b.readUUID(), b.readUtf(), strings(b), b.readBoolean(), b.readBoolean(), b.readUtf(), b.readInt(),
-                    strings(b), strings(b), b.readList(RecView::decode), b.readVarInt(), b.readLong(), b.readBoolean(), b.readBoolean(), strings(b));
+                    strings(b), strings(b), b.readList(RecView::decode), b.readVarInt(), b.readLong(), b.readBoolean(), b.readBoolean(), strings(b),
+                    b.readInt(), b.readVarInt(), b.readUtf());
         }
     }
     public record ReqView(int id, int type, String target, String by, String reason, long time, int status, String decidedBy) {

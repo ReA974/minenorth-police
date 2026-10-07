@@ -29,8 +29,8 @@ import java.util.UUID;
  * Logique serveur de la police.
  *
  * Droits par grade :
- *  - Sous-officier : consulter les dossiers, amende simple, note, saisie d'objets, faire une demande.
- *  - Officier      : + amende avec retrait de points, condamnation, avis de recherche.
+ *  - Sous-officier : consulter les dossiers, amende simple, note, saisie d'objets, faire une demande, garde à vue.
+ *  - Officier      : + amende avec retrait de points, condamnation, avis de recherche, prison, libération anticipée.
  *  - Commissaire   : + accepter/refuser les demandes, gérer les effectifs, supprimer une entrée de casier.
  * Un OP n'a aucun accès à la tablette tant qu'il n'a pas de grade (/police grade).
  */
@@ -237,9 +237,11 @@ public final class PoliceService {
             recs.add(new ModNetwork.RecView(r.id, r.type, r.time, r.officer, r.text, r.amount, r.points, r.paid));
         }
         for (Rec r : list) if (r.type == PoliceData.AMENDE && !r.paid) unpaid += r.amount;
+        PoliceData.Detainee jail = d.detainees.get(target);
         return new ModNetwork.Dossier(target, display(s, target), identity == null ? List.of() : List.of(identity), on != null, near(p, on),
                 d.wanted.getOrDefault(target, ""), Compat.points(s, target), Compat.licences(s, target), Compat.impound(s, target),
-                recs, d.searchMinutesLeft(target), unpaid, Compat.hasPermis(), Compat.hasVehicles(), Compat.registered(s, target));
+                recs, d.searchMinutesLeft(target), unpaid, Compat.hasPermis(), Compat.hasVehicles(), Compat.registered(s, target),
+                jail == null ? -1 : jail.type, jail == null ? 0 : (jail.secondsLeft + 59) / 60, jail == null ? "" : jail.cell);
     }
 
     private static void sendDossier(ServerPlayer p, UUID target, String msg, boolean ok) {
@@ -412,6 +414,13 @@ public final class PoliceService {
             case ModNetwork.A_DECIDE -> { R r = decide(p, rank, d, k.n(), k.m() == 1); sendRequests(p, r.msg(), r.ok()); }
             case ModNetwork.A_SEIZE -> { if (known) { R r = seize(p, d, t, k.n()); sendInventory(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_GRADE -> { R r = grade(p, rank, d, t, clean(k.a()), k.n()); sendRoster(p, r.msg(), r.ok()); }
+            case ModNetwork.A_JAIL -> { if (known) { JailService.Result r = JailService.jail(p, t, k.n(), k.m(), clean(k.a())); sendDossier(p, t, r.msg(), r.ok()); } }
+            case ModNetwork.A_RELEASE -> {
+                if (!known) break;
+                if (rank > PoliceData.OFFICIER) { sendDossier(p, t, "Seuls les Officiers et le Commissaire peuvent libérer un détenu.", false); break; }
+                JailService.Result r = JailService.release(s, t, "libéré par " + display(s, p.getUUID()));
+                sendDossier(p, t, r.msg(), r.ok());
+            }
             case ModNetwork.A_RADARS -> sendRadars(p, "", true);
             // Bureau du commissariat : c'est le mod Accueil Police qui affiche son propre écran à la place de la tablette.
             case ModNetwork.A_DESK -> { if (!Compat.openAccueilDesk(p)) sendList(p, "Le mod Accueil Police n'est pas installé sur le serveur.", false); }
