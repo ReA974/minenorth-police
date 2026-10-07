@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Effectifs, casiers judiciaires, avis de recherche et demandes. Sauvegardé avec le monde. */
+/** Effectifs, casiers judiciaires, avis de recherche, demandes et prison. Sauvegardé avec le monde. */
 public class PoliceData extends SavedData {
     private static final String NAME = "minenorth_police";
 
@@ -20,7 +20,10 @@ public class PoliceData extends SavedData {
     public static final String[] GRADES = {"Commissaire", "Officier", "Sous-officier"};
 
     /** Types d'entrée du casier. */
-    public static final int AMENDE = 0, CONDAMNATION = 1, SAISIE = 2, NOTE = 3, PERMIS = 4, PERQUISITION = 5;
+    public static final int AMENDE = 0, CONDAMNATION = 1, SAISIE = 2, NOTE = 3, PERMIS = 4, PERQUISITION = 5, GARDE_A_VUE = 6;
+    /** Types de détention. */
+    public static final int JAIL_GAV = 0, JAIL_PRISON = 1;
+    public static final String[] JAIL_TYPES = {"Garde à vue", "Prison"};
     /** Types de demande. */
     public static final int REQ_PERQUISITION = 0, REQ_PERMIS = 1;
     public static final int PENDING = 0, ACCEPTED = 1, REFUSED = 2;
@@ -38,6 +41,34 @@ public class PoliceData extends SavedData {
         public int id, speed, limit; public long time; public UUID driver;
         public String plate = "", model = "", where = "", driverName = "", fine = "";
     }
+
+    /** Cellule ou point de sortie de la prison (position + orientation). */
+    public static final class Cell {
+        public String name = "", dim = "minecraft:overworld"; public double x, y, z; public float yaw, pitch;
+
+        CompoundTag save() {
+            CompoundTag t = new CompoundTag();
+            t.putString("name", name); t.putString("dim", dim); t.putDouble("x", x); t.putDouble("y", y); t.putDouble("z", z);
+            t.putFloat("yaw", yaw); t.putFloat("pitch", pitch);
+            return t;
+        }
+        static Cell load(CompoundTag t) {
+            Cell c = new Cell();
+            c.name = t.getString("name"); c.dim = t.getString("dim"); c.x = t.getDouble("x"); c.y = t.getDouble("y"); c.z = t.getDouble("z");
+            c.yaw = t.getFloat("yaw"); c.pitch = t.getFloat("pitch");
+            return c;
+        }
+    }
+    /** Citoyen en garde à vue ou en prison. secondsLeft ne diminue que lorsqu'il est connecté. */
+    public static final class Detainee {
+        public int type, secondsLeft; public long since; public String cell = "", reason = "", officer = "";
+    }
+
+    /** Cellules de la prison, dans l'ordre d'attribution. */
+    public final List<Cell> cells = new ArrayList<>();
+    /** Point de libération (null = spawn du monde). */
+    public Cell jailExit;
+    public final Map<UUID, Detainee> detainees = new LinkedHashMap<>();
 
     /** Flashs des radars fixes, du plus ancien au plus récent. */
     public final List<Flash> flashes = new ArrayList<>();
@@ -62,6 +93,17 @@ public class PoliceData extends SavedData {
 
     public UUID byName(String name) {
         for (Map.Entry<UUID, String> e : names.entrySet()) if (e.getValue().equalsIgnoreCase(name.trim())) return e.getKey();
+        return null;
+    }
+
+    public Cell cell(String name) {
+        for (Cell c : cells) if (c.name.equalsIgnoreCase(name.trim())) return c;
+        return null;
+    }
+
+    /** Détenu de cette cellule, ou null si elle est libre. */
+    public UUID occupant(String cellName) {
+        for (Map.Entry<UUID, Detainee> e : detainees.entrySet()) if (e.getValue().cell.equalsIgnoreCase(cellName)) return e.getKey();
         return null;
     }
 
@@ -111,6 +153,17 @@ public class PoliceData extends SavedData {
             f.driverName = t.getString("driverName"); f.fine = t.getString("fine");
             d.flashes.add(f);
         }
+        ListTag cl = tag.getList("cells", Tag.TAG_COMPOUND);
+        for (int i = 0; i < cl.size(); i++) d.cells.add(Cell.load(cl.getCompound(i)));
+        if (tag.contains("jailExit", Tag.TAG_COMPOUND)) d.jailExit = Cell.load(tag.getCompound("jailExit"));
+        ListTag dl = tag.getList("detainees", Tag.TAG_COMPOUND);
+        for (int i = 0; i < dl.size(); i++) {
+            CompoundTag t = dl.getCompound(i);
+            Detainee x = new Detainee();
+            x.type = t.getInt("type"); x.secondsLeft = t.getInt("secondsLeft"); x.since = t.getLong("since");
+            x.cell = t.getString("cell"); x.reason = t.getString("reason"); x.officer = t.getString("officer");
+            d.detainees.put(t.getUUID("id"), x);
+        }
         return d;
     }
 
@@ -155,6 +208,18 @@ public class PoliceData extends SavedData {
             fl.add(t);
         }
         tag.put("flashes", fl);
+        ListTag cl = new ListTag();
+        for (Cell c : cells) cl.add(c.save());
+        tag.put("cells", cl);
+        if (jailExit != null) tag.put("jailExit", jailExit.save());
+        ListTag dl = new ListTag();
+        detainees.forEach((id, x) -> {
+            CompoundTag t = new CompoundTag();
+            t.putUUID("id", id); t.putInt("type", x.type); t.putInt("secondsLeft", x.secondsLeft); t.putLong("since", x.since);
+            t.putString("cell", x.cell); t.putString("reason", x.reason); t.putString("officer", x.officer);
+            dl.add(t);
+        });
+        tag.put("detainees", dl);
         return tag;
     }
 }

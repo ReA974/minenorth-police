@@ -19,7 +19,8 @@ import java.util.UUID;
 public class PoliceScreen extends Screen {
     private static final int W = 420, H = 260, ROWS = 6;
     private static final String[] GRADES = {"Commissaire", "Officier", "Sous-officier"};
-    private static final String[] TYPES = {"AMENDE", "CONDAMNATION", "SAISIE", "NOTE", "PERMIS", "PERQUISITION"};
+    private static final String[] TYPES = {"AMENDE", "CONDAMNATION", "SAISIE", "NOTE", "PERMIS", "PERQUISITION", "GARDE À VUE"};
+    private static final String[] JAIL = {"EN GARDE À VUE", "EN PRISON"};
 
     private ModNetwork.ViewPacket v;
     private int left, top;
@@ -30,8 +31,8 @@ public class PoliceScreen extends Screen {
     private String message = "";
     private boolean messageOk = true;
 
-    private EditBox bSearch, bReason, bAmount, bPoints, bName, bPlate, bImmat;
-    private String kSearch = "", kReason = "", kAmount = "", kPoints = "", kName = "", kPlate = "", kImmat = "";
+    private EditBox bSearch, bReason, bAmount, bPoints, bName, bPlate, bImmat, bDuration;
+    private String kSearch = "", kReason = "", kAmount = "", kPoints = "", kName = "", kPlate = "", kImmat = "", kDuration = "";
 
     private record Label(String text, int x, int y, int color) {}
     private record Card(int x, int y, int w, int h, int accent) {}
@@ -52,11 +53,11 @@ public class PoliceScreen extends Screen {
         keep();
         boolean sameDossier = v.dossier() != null && n.dossier() != null && v.dossier().id().equals(n.dossier().id());
         if (n.view() != v.view()) page = 0;
-        if (n.view() == ModNetwork.V_DOSSIER && !sameDossier) { tab = 0; page = 0; kReason = kAmount = kPoints = ""; }
+        if (n.view() == ModNetwork.V_DOSSIER && !sameDossier) { tab = 0; page = 0; kReason = kAmount = kPoints = kDuration = ""; }
         this.v = n;
         this.message = n.message();
         this.messageOk = n.ok();
-        if (n.ok() && !n.message().isEmpty()) { kAmount = kPoints = ""; kName = ""; if (n.view() != ModNetwork.V_INVENTORY) kReason = ""; }
+        if (n.ok() && !n.message().isEmpty()) { kAmount = kPoints = kDuration = ""; kName = ""; if (n.view() != ModNetwork.V_INVENTORY) kReason = ""; }
         if (n.view() == ModNetwork.V_LIST) kSearch = n.query();
         if (n.view() == ModNetwork.V_PLATES) kImmat = n.query();
         rebuild();
@@ -78,6 +79,7 @@ public class PoliceScreen extends Screen {
         if (bName != null) kName = bName.getValue();
         if (bPlate != null) kPlate = bPlate.getValue();
         if (bImmat != null) kImmat = bImmat.getValue();
+        if (bDuration != null) kDuration = bDuration.getValue();
     }
     private void rebuild() { clearWidgets(); init(); }
     private void go(Runnable change) { keep(); message = ""; change.run(); rebuild(); }
@@ -128,7 +130,7 @@ public class PoliceScreen extends Screen {
         labels.clear();
         cards.clear();
         faces.clear();
-        bSearch = bReason = bAmount = bPoints = bName = bPlate = bImmat = null;
+        bSearch = bReason = bAmount = bPoints = bName = bPlate = bImmat = bDuration = null;
 
         boolean inDossier = v.view() == ModNetwork.V_DOSSIER || v.view() == ModNetwork.V_INVENTORY;
         btn(left + W - 100, top + 10, 86, 16, inDossier ? "Retour" : "Fermer", MineNorthButton.GHOST, this::back);
@@ -233,7 +235,12 @@ public class PoliceScreen extends Screen {
         kv("Amendes impayées :", d.unpaid() > 0 ? MineNorthStyle.euros(d.unpaid()) : "aucune", lx, y + 91, mw);
         int y2 = y0 + 120;
         if (!d.wantedReason().isEmpty()) { label("AVIS DE RECHERCHE : " + d.wantedReason(), x, y2, MineNorthStyle.ALERT, w); y2 += 13; }
-        if (d.searchMinutes() > 0) label("PERQUISITION AUTORISÉE : ses portes sont accessibles encore " + d.searchMinutes() + " min.", x, y2, MineNorthStyle.WARN, w);
+        if (d.searchMinutes() > 0) { label("PERQUISITION AUTORISÉE : ses portes sont accessibles encore " + d.searchMinutes() + " min.", x, y2, MineNorthStyle.WARN, w); y2 += 13; }
+        if (d.jailType() >= 0) label(jailText(d), x, y2, MineNorthStyle.ALERT, w);
+    }
+
+    private static String jailText(Dossier d) {
+        return JAIL[Math.max(0, Math.min(1, d.jailType()))] + " : " + d.jailMinutes() + " min restante(s) (cellule « " + d.jailCell() + " »)";
     }
 
     private static int typeColor(int type) {
@@ -242,6 +249,7 @@ public class PoliceScreen extends Screen {
             case 1 -> MineNorthStyle.ALERT;
             case 2 -> MineNorthStyle.PINK;
             case 4, 5 -> MineNorthStyle.CYAN;
+            case 6 -> MineNorthStyle.WARN;
             default -> MineNorthStyle.MUTED;
         };
     }
@@ -334,6 +342,20 @@ public class PoliceScreen extends Screen {
         btn(rx, y0 + 124, half, 20, d.wantedReason().isEmpty() ? "LANCER UN AVIS DE RECHERCHE" : "LEVER L'AVIS DE RECHERCHE",
                 d.wantedReason().isEmpty() ? MineNorthStyle.PINK : MineNorthStyle.DARK,
                 () -> send(ModNetwork.A_WANTED, d.id(), bReason.getValue(), "", 0, 0)).enabled(officer);
+
+        // Garde à vue (tous grades) / prison (Officier+) ; si le citoyen est déjà détenu : temps restant et libération.
+        int yj = y0 + 148;
+        if (d.jailType() >= 0) {
+            label(jailText(d), x, yj + 6, MineNorthStyle.ALERT, w - 110);
+            btn(x + w - 100, yj, 100, 20, "LIBÉRER", MineNorthStyle.GREEN, () -> send(ModNetwork.A_RELEASE, d.id(), "", "", 0, 0)).enabled(officer);
+        } else {
+            int bw = (w - 80) / 2;
+            bDuration = box(x, yj + 1, 72, "Durée (min)", kDuration, 4);
+            btn(x + 76, yj, bw, 20, d.near() ? "GARDE À VUE" : "GARDE À VUE : TROP LOIN", MineNorthStyle.CYAN,
+                    () -> send(ModNetwork.A_JAIL, d.id(), bReason.getValue(), "", 0, number(bDuration.getValue()))).enabled(d.near());
+            btn(x + 80 + bw, yj, bw, 20, "INCARCÉRER (PRISON)", MineNorthStyle.PINK,
+                    () -> send(ModNetwork.A_JAIL, d.id(), bReason.getValue(), "", 1, number(bDuration.getValue()))).enabled(officer && d.near());
+        }
     }
 
     // ---------- saisie d'objets

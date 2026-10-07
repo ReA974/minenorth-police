@@ -25,6 +25,16 @@ public final class PoliceConfig {
     /** Tag donné aux policiers (utilisé par le mod Véhicules pour la mise en fourrière). Vide = aucun tag. */
     public String tag_police = "police.check";
 
+    // ------------------------------------------------------------------ garde à vue et prison
+    /** Durée maximum d'une garde à vue (minutes de jeu connecté). */
+    public int garde_a_vue_max_minutes = 24;
+    /** Durée maximum d'une peine de prison (minutes de jeu connecté). */
+    public int prison_max_minutes = 120;
+    /** Au-delà de cette distance (blocs) de sa cellule, le détenu y est ramené. */
+    public int prison_rayon_evasion = 8;
+    /** Commandes interdites aux détenus (sans « / »). */
+    public List<String> prison_commandes_bloquees = new ArrayList<>(List.of("home", "spawn", "tpa", "tpaccept", "back", "warp", "rtp"));
+
     // ------------------------------------------------------------------ équipement
     /** Vrai : radar, test salivaire, détecteur et taser ne fonctionnent que pour les policiers enregistrés. */
     public boolean objets_reserves_police = true;
@@ -120,6 +130,10 @@ public final class PoliceConfig {
         c.distance_saisie = Math.max(1, c.distance_saisie);
         if (c.tag_police == null) c.tag_police = "";
         if (c.kit_equipement == null) c.kit_equipement = def.kit_equipement;
+        c.garde_a_vue_max_minutes = Math.max(1, c.garde_a_vue_max_minutes);
+        c.prison_max_minutes = Math.max(1, c.prison_max_minutes);
+        c.prison_rayon_evasion = Math.max(2, Math.min(64, c.prison_rayon_evasion));
+        if (c.prison_commandes_bloquees == null) c.prison_commandes_bloquees = def.prison_commandes_bloquees;
         c.radar_portee = Math.max(8, c.radar_portee);
         c.radar_tolerance_kmh = Math.max(0, c.radar_tolerance_kmh);
         if (c.radar_limites == null || c.radar_limites.isEmpty()) c.radar_limites = def.radar_limites;

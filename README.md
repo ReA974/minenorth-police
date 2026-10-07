@@ -8,19 +8,43 @@ Optionnels (détectés automatiquement) : Identité, Permis, Véhicules, Portes,
 - `/police tablette <joueur>` : donne une tablette de police.
 - `/police equipement <joueur>` : donne le kit (radar à main, détecteur, taser, 16 cartouches, 8 tests) — liste dans `kit_equipement`.
 - `/police reload` : recharge `config/minenorth_police.json`.
+- `/police cellule ajouter <nom>` : place une cellule à votre position (et orientation).
+- `/police cellule supprimer <nom>` : supprime une cellule (refusé si elle est occupée).
+- `/police cellule liste` : cellules, position, occupant, et point de sortie.
+- `/police cellule sortie` : place le point de libération à votre position.
+- `/police liberer <joueur>` : libère immédiatement un détenu (même hors ligne).
 
 ## Tablette (`minenorthpolice:tablette_police`)
 Clic droit, réservée aux policiers enregistrés. Un OP doit d'abord se donner un grade avec `/police grade`.
 
 | Grade | Droits |
 |---|---|
-| Sous-officier | dossiers, amende simple, note, saisie d'objets, demandes de perquisition / d'annulation de permis |
-| Officier | + amende avec retrait de points, condamnation, avis de recherche |
+| Sous-officier | dossiers, amende simple, note, saisie d'objets, demandes de perquisition / d'annulation de permis, garde à vue |
+| Officier | + amende avec retrait de points, condamnation, avis de recherche, prison, libération anticipée |
 | Commissaire | + accepter / refuser les demandes, gérer les effectifs, supprimer une entrée de casier |
 
 ## Configuration
 `duree_perquisition_minutes`, `amende_max_euros`, `points_max_par_amende`, `distance_saisie`,
-`tag_police` (tag donné aux policiers, utilisé par le mod Véhicules pour la fourrière).
+`tag_police` (tag donné aux policiers, utilisé par le mod Véhicules pour la fourrière),
+`garde_a_vue_max_minutes`, `prison_max_minutes`, `prison_rayon_evasion`, `prison_commandes_bloquees` (voir ci-dessous).
+
+## Garde à vue et prison
+**Mise en place (OP)** : construisez les cellules, placez-vous dans chacune et tapez `/police cellule ajouter <nom>`
+(ex. `gav1`, `prison1`), puis `/police cellule sortie` devant le commissariat. Sans point de sortie, les détenus libérés vont au spawn du monde.
+
+**En jeu** : tablette → dossier du citoyen → onglet **ACTIONS**. Remplir le **motif** et la **durée (min)**, puis :
+- **GARDE À VUE** (Sous-officier et plus) : au plus `garde_a_vue_max_minutes` (24 par défaut), inscrite au casier (type GARDE À VUE).
+- **INCARCÉRER (PRISON)** (Officier et plus) : au plus `prison_max_minutes` (120 par défaut), inscrite au casier comme **condamnation**.
+
+Le citoyen doit être connecté et à moins de `distance_saisie` blocs. Il est téléporté dans la première cellule libre (une cellule = un détenu).
+
+| Règle | Fonctionnement |
+|---|---|
+| Durée | Ne s'écoule que lorsque le détenu est **connecté** ; temps restant affiché dans sa barre d'action et sur sa fiche. |
+| Évasion | S'il s'éloigne de plus de `prison_rayon_evasion` blocs (8) ou change de dimension, il est ramené en cellule. Idem à la reconnexion et après une mort. |
+| Commandes | Les commandes de `prison_commandes_bloquees` (`home`, `spawn`, `tpa`, `tpaccept`, `back`, `warp`, `rtp`) sont refusées, y compris `mod:commande`. |
+| Libération | En fin de peine, ou avant via **LIBÉRER** (Officier et plus) / `/police liberer`. Téléporté au point de sortie, **inventaire conservé** (utilisez la saisie de la tablette si besoin). |
+| Cellule inutilisable | Si la cellule d'un détenu n'existe plus (dimension supprimée…), il est déplacé dans une autre cellule libre, sinon libéré. |
 
 ## Équipement (réservé aux policiers si `objets_reserves_police` = true)
 | Objet | Utilisation |
