@@ -162,6 +162,7 @@ public final class JailService {
         String what = PoliceData.JAIL_TYPES[type];
         PoliceService.addEntry(s, target, on.getGameProfile().getName(),
                 type == PoliceData.JAIL_GAV ? PoliceData.GARDE_A_VUE : PoliceData.CONDAMNATION, officerName, what + " " + minutes + " min : " + reason);
+        PoliceService.releaseHold(s, target);
         teleport(on, c);
         on.sendSystemMessage(Component.literal("§c" + what + " : " + minutes + " min (temps de jeu connecté). Motif : " + reason));
         PoliceService.alertPolice(s, "§b[Police] " + PoliceService.display(s, target) + " : " + what.toLowerCase(Locale.ROOT) + " " + minutes

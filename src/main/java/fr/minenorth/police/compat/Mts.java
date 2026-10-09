@@ -143,6 +143,90 @@ public final class Mts {
         return "";
     }
 
+    // ------------------------------------------------------------------ sièges : installer / retirer un joueur (par réflexion)
+
+    /** Pièces « siège » (PartSeat) du véhicule ; name = systemName de la pièce (ex. « seat_suspect »), null = tous les sièges. */
+    private static java.util.List<Object> seats(Entity vehicle, @Nullable String name) {
+        java.util.List<Object> out = new java.util.ArrayList<>();
+        try {
+            Object in = inner(vehicle);
+            if (!(field(in, "allParts") instanceof Iterable<?> parts)) return out;
+            for (Object part : parts) {
+                if (!part.getClass().getSimpleName().equals("PartSeat")) continue;
+                if (name != null && !(field(field(part, "definition"), "systemName") instanceof String s && s.equals(name))) continue;
+                out.add(part);
+            }
+        } catch (Throwable ignored) {}
+        return out;
+    }
+
+    private static boolean occupiedBy(Object seat, UUID id) {
+        try {
+            Object rider = field(seat, "rider");
+            if (rider == null) return false;
+            return id == null || id.equals(rider.getClass().getMethod("getID").invoke(rider));
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Vrai si ce véhicule MTS a au moins un siège libre de ce type. */
+    public static boolean hasFreeSeat(Entity vehicle, @Nullable String name) {
+        if (!isBuilder(vehicle)) return false;
+        for (Object s : seats(vehicle, name)) if (field(s, "rider") == null) return true;
+        return false;
+    }
+
+    /** Véhicule MTS le plus proche ayant un siège libre de ce type, ou null. */
+    @Nullable
+    public static Entity nearestWithSeat(net.minecraft.server.level.ServerPlayer p, String name, double radius) {
+        Entity best = null;
+        double bd = Double.MAX_VALUE;
+        for (Entity e : p.level().getEntities((Entity) null, p.getBoundingBox().inflate(radius), x -> isBuilder(x) && hasFreeSeat(x, name))) {
+            double d = e.distanceToSqr(p);
+            if (d < bd) { bd = d; best = e; }
+        }
+        return best;
+    }
+
+    /** Installe le joueur dans le premier siège libre de ce type (name null = n'importe quel siège). */
+    public static boolean seatPlayer(net.minecraft.server.level.ServerPlayer p, Entity vehicle, @Nullable String name) {
+        if (!isBuilder(vehicle)) return false;
+        try {
+            Object wrapper = Class.forName("mcinterface1201.WrapperPlayer")
+                    .getMethod("getWrapperFor", net.minecraft.world.entity.player.Player.class).invoke(null, p);
+            for (Object seat : seats(vehicle, name)) {
+                if (field(seat, "rider") != null) continue;
+                for (Method m : seat.getClass().getMethods()) {
+                    if (m.getName().equals("setRider") && m.getParameterCount() == 2) {
+                        if (Boolean.TRUE.equals(m.invoke(seat, wrapper, Boolean.TRUE))) return true;
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    /** Retire le joueur de son siège MTS (sinon simple descente vanilla). */
+    public static void unseat(net.minecraft.server.level.ServerPlayer p) {
+        Entity ride = p.getVehicle();
+        if (ride == null) return;
+        try {
+            if (isSeat(ride)) {
+                for (Entity e : p.level().getEntities((Entity) null, p.getBoundingBox().inflate(24), Mts::isBuilder)) {
+                    for (Object seat : seats(e, null)) {
+                        if (occupiedBy(seat, p.getUUID())) { seat.getClass().getMethod("removeRider").invoke(seat); return; }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        p.stopRiding();
+    }
+
+    /** Vrai si le joueur est assis dans un siège MTS. */
+    public static boolean isSeated(net.minecraft.server.level.ServerPlayer p) { return isSeat(p.getVehicle()); }
+
     /** Nom du modèle (pack MTS), sinon nom de l'entité. */
     public static String vehicleName(Entity e) {
         Object in = inner(e);

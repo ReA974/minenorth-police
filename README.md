@@ -64,3 +64,16 @@ Tous les objets sont dans l'onglet créatif « Police MineNorth ».
 ## Bureau du commissariat
 L'onglet **BUREAU** de la tablette ouvre le bureau du mod `minenorthaccueil` (plaintes, historique, rendez-vous, objets trouvés, fourrière).
 Sans ce mod, l'onglet affiche simplement un message.
+
+## Licence
+
+**Tous droits réservés - MineNorthRP.** Réutilisation, copie, modification, décompilation / ingénierie
+inverse (y compris par outils d'intelligence artificielle) et utilisation pour entraîner une IA sont
+**interdites** sans autorisation écrite. Voir [LICENSE](LICENSE).
+
+## Dispatch et service
+- Bouton **PRENDRE SON POSTE / FIN DE SERVICE** dans l'en-tête de la tablette (tous les policiers).
+- Onglet **DISPATCH** : réservé au plus haut gradé en service (à grade égal, le premier arrivé). Liste des policiers en service avec position et distance, message à tous ou à un seul.
+
+## Transport de suspects (véhicules du pack `minenorthpolicecar`)
+Onglet **TRANSPORT** du dossier : **EMBARQUER LE SUSPECT** l'installe sur un siège `seat_suspect` du véhicule de police le plus proche (8 blocs, suspect à portée). S'il quitte son siège, il y est remis ; **FAIRE SORTIR** le libère. Une mise en détention lève l'embarquement.

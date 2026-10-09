@@ -1,6 +1,7 @@
 package fr.minenorth.police;
 
 import fr.minenorth.police.compat.Compat;
+import fr.minenorth.police.compat.Mts;
 import fr.minenorth.police.config.PoliceConfig;
 import fr.minenorth.police.data.PoliceData;
 import fr.minenorth.police.data.PoliceData.Rec;
@@ -20,6 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -78,6 +80,7 @@ public final class PoliceService {
         if (grade < 0) {
             if (d.officers.remove(id) == null) return name + " ne fait pas partie de la police.";
             d.setDirty();
+            setDuty(s, id, false);
             if (on != null) { syncTag(on, false); on.sendSystemMessage(Component.literal("§eVous ne faites plus partie de la police.")); }
             return name + " a été retiré de la police.";
         }
@@ -139,7 +142,7 @@ public final class PoliceService {
                                                 List<ModNetwork.Citizen> citizens, ModNetwork.Dossier dossier, List<ModNetwork.ReqView> requests,
                                                 List<ModNetwork.Officer> officers, List<ModNetwork.Inv> inventory) {
         return new ModNetwork.ViewPacket(view, rank(p), msg, ok, query, page, pages, pending(PoliceData.get(p.server)),
-                citizens, dossier, requests, officers, inventory, List.of(), List.of());
+                citizens, dossier, requests, officers, inventory, List.of(), List.of(), duty(p, false));
     }
 
     /** Onglet RADARS : flashs des radars fixes, les plus récents d'abord (200 max). */
@@ -151,7 +154,7 @@ public final class PoliceService {
             out.add(new ModNetwork.FlashView(f.id, f.time, f.plate, f.model, f.speed, f.limit, f.where));
         }
         ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_RADARS, rank(p), msg, ok, "", 0, 1, pending(d),
-                List.of(), null, List.of(), List.of(), List.of(), out, List.of()));
+                List.of(), null, List.of(), List.of(), List.of(), out, List.of(), duty(p, false)));
     }
 
     /** Onglet IMMAT. : fichier des immatriculations du mod Véhicules (300 lignes max), filtré par plaque, nom ou modèle. */
@@ -184,7 +187,7 @@ public final class PoliceService {
                     pl.owner == null ? ModNetwork.NONE : pl.owner, pl.ownerName, owner, birth == null ? "" : birth, pl.time, pl.shop, known));
         }
         ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_PLATES, rank(p), msg, ok, query, 0, 1, pending(d),
-                List.of(), null, List.of(), List.of(), List.of(), List.of(), out));
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), out, duty(p, false)));
     }
 
     /** Enregistre un flash de radar fixe (visible dans l'onglet RADARS de la tablette) : plaque uniquement, pas de conducteur. */
@@ -241,7 +244,8 @@ public final class PoliceService {
         return new ModNetwork.Dossier(target, display(s, target), identity == null ? List.of() : List.of(identity), on != null, near(p, on),
                 d.wanted.getOrDefault(target, ""), Compat.points(s, target), Compat.licences(s, target), Compat.impound(s, target),
                 recs, d.searchMinutesLeft(target), unpaid, Compat.hasPermis(), Compat.hasVehicles(), Compat.registered(s, target),
-                jail == null ? -1 : jail.type, jail == null ? 0 : (jail.secondsLeft + 59) / 60, jail == null ? "" : jail.cell);
+                jail == null ? -1 : jail.type, jail == null ? 0 : (jail.secondsLeft + 59) / 60, jail == null ? "" : jail.cell,
+                Mts.nearestWithSeat(p, SUSPECT_SEAT, BOARD_RADIUS) != null, HOLD.containsKey(target));
     }
 
     private static void sendDossier(ServerPlayer p, UUID target, String msg, boolean ok) {
@@ -286,6 +290,159 @@ public final class PoliceService {
             if (!st.isEmpty()) items.add(new ModNetwork.Inv(i, st.getHoverName().getString(), st.getCount()));
         }
         ModNetwork.send(p, packet(p, ModNetwork.V_INVENTORY, msg, ok, "", 0, 1, List.of(), dossier(p, target), List.of(), List.of(), items));
+    }
+
+
+    // ------------------------------------------------------------------ service et dispatch
+    /** Policiers en service (uuid -> début de service, ms). Perdu au redémarrage : chacun reprend son poste. */
+    private static final Map<UUID, Long> DUTY = new LinkedHashMap<>();
+
+    public static boolean onDuty(UUID id) { return DUTY.containsKey(id); }
+
+    /** Plus haut gradé en service et connecté ; à grade égal, celui qui a pris son poste en premier. Null s'il n'y en a pas. */
+    public static UUID dispatcher(MinecraftServer s) {
+        PoliceData d = PoliceData.get(s);
+        UUID best = null;
+        int bestGrade = Integer.MAX_VALUE;
+        long bestSince = Long.MAX_VALUE;
+        for (Map.Entry<UUID, Long> e : DUTY.entrySet()) {
+            Integer g = d.officers.get(e.getKey());
+            if (g == null || s.getPlayerList().getPlayer(e.getKey()) == null) continue;
+            int grade = Math.max(0, Math.min(2, g));
+            if (grade < bestGrade || (grade == bestGrade && e.getValue() < bestSince)) { best = e.getKey(); bestGrade = grade; bestSince = e.getValue(); }
+        }
+        return best;
+    }
+
+    private static boolean isDispatcher(ServerPlayer p) { return p.getUUID().equals(dispatcher(p.server)); }
+
+    /** Prend ou quitte son poste ; prévient la police si le dispatcher change. */
+    public static void setDuty(MinecraftServer s, UUID id, boolean on) {
+        if (on && !PoliceData.get(s).officers.containsKey(id)) return;
+        UUID before = dispatcher(s);
+        boolean was = DUTY.containsKey(id);
+        if (on && !was) DUTY.put(id, System.currentTimeMillis());
+        else if (!on && was) DUTY.remove(id);
+        else return;
+        ServerPlayer p = s.getPlayerList().getPlayer(id);
+        if (p != null) p.sendSystemMessage(Component.literal(on ? "§b[Police] Vous avez pris votre poste." : "§e[Police] Fin de service."));
+        UUID after = dispatcher(s);
+        if (java.util.Objects.equals(before, after)) return;
+        if (after == null) tellPolice(s, "§e[Dispatch] Plus personne en service : le dispatch est vacant.");
+        else tellPolice(s, "§b[Dispatch] " + display(s, after) + " assure le dispatch.");
+    }
+
+    private static ModNetwork.Duty duty(ServerPlayer p, boolean withList) {
+        MinecraftServer s = p.server;
+        UUID disp = dispatcher(s);
+        boolean me = p.getUUID().equals(disp);
+        List<ModNetwork.DutyView> list = new ArrayList<>();
+        if (withList && me) {
+            PoliceData d = PoliceData.get(s);
+            for (Map.Entry<UUID, Long> e : DUTY.entrySet()) {
+                ServerPlayer o = s.getPlayerList().getPlayer(e.getKey());
+                Integer g = d.officers.get(e.getKey());
+                if (o == null || g == null) continue;
+                int dist = o.level() == p.level() ? (int) Math.round(o.distanceTo(p)) : -1;
+                list.add(new ModNetwork.DutyView(e.getKey(), display(s, e.getKey()), Math.max(0, Math.min(2, g)), (System.currentTimeMillis() - e.getValue()) / 1000,
+                        o.level().dimension().location().getPath(), o.getBlockX(), o.getBlockY(), o.getBlockZ(), dist, e.getKey().equals(p.getUUID())));
+            }
+            list.sort(Comparator.comparingInt(ModNetwork.DutyView::grade).thenComparingLong(x -> -x.since()));
+        }
+        int count = 0;
+        for (UUID id : DUTY.keySet()) if (s.getPlayerList().getPlayer(id) != null) count++;
+        return new ModNetwork.Duty(DUTY.containsKey(p.getUUID()), me, disp == null ? "" : display(s, disp), count, list);
+    }
+
+    private static void sendDispatch(ServerPlayer p, String msg, boolean ok) {
+        PoliceData d = PoliceData.get(p.server);
+        ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_DISPATCH, rank(p), msg, ok, "", 0, 1, pending(d),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), duty(p, true)));
+    }
+
+    /** Réaffiche la vue d'où le policier a pris / quitté son poste (les vues à saisie reviennent à la liste). */
+    private static void reopen(ServerPlayer p, int view, int rank) {
+        switch (view) {
+            case ModNetwork.V_REQUESTS -> sendRequests(p, "", true);
+            case ModNetwork.V_RADARS -> sendRadars(p, "", true);
+            case ModNetwork.V_ROSTER -> { if (rank == PoliceData.COMMISSAIRE) sendRoster(p, "", true); else sendList(p, "", true); }
+            case ModNetwork.V_DISPATCH -> { if (isDispatcher(p)) sendDispatch(p, "", true); else sendList(p, "", true); }
+            default -> sendList(p, "", true);
+        }
+    }
+
+    /** Message du dispatch à un policier en service, ou à tous (target = NONE). */
+    private static R dispatchMessage(ServerPlayer p, UUID target, String text) {
+        if (!isDispatcher(p)) return R.err("Seul le dispatcher (plus haut gradé en service) envoie des ordres.");
+        if (text.length() < 2) return R.err("Écrivez le message à transmettre.");
+        MinecraftServer s = p.server;
+        String line = "§b[Dispatch] §f" + text;
+        int n = 0;
+        if (ModNetwork.NONE.equals(target)) {
+            for (UUID id : new ArrayList<>(DUTY.keySet())) {
+                ServerPlayer o = s.getPlayerList().getPlayer(id);
+                if (o != null && o != p) { o.sendSystemMessage(Component.literal(line)); n++; }
+            }
+            return n == 0 ? R.err("Aucun autre policier en service.") : R.ok("Message envoyé à " + n + " policier(s) en service.");
+        }
+        ServerPlayer o = DUTY.containsKey(target) ? s.getPlayerList().getPlayer(target) : null;
+        if (o == null) return R.err("Ce policier n'est plus en service.");
+        o.sendSystemMessage(Component.literal(line));
+        return R.ok("Message envoyé à " + display(s, target) + ".");
+    }
+
+
+    // ------------------------------------------------------------------ transport de suspects (sièges arrière des véhicules de police)
+    /** Nom de la pièce « siège suspect » du pack de véhicules (tools/seats.py). */
+    public static final String SUSPECT_SEAT = "seat_suspect";
+    private static final double BOARD_RADIUS = 8;
+    private record Hold(UUID vehicle) {}
+    /** Suspects embarqués : ils sont remis à leur place s'ils quittent leur siège, jusqu'à ce qu'un policier les fasse sortir. */
+    private static final Map<UUID, Hold> HOLD = new HashMap<>();
+
+    public static boolean isHeld(UUID id) { return HOLD.containsKey(id); }
+
+    /** Lève la garde sur un suspect (détention, déconnexion...) ; il est retiré de son siège s'il y est encore. */
+    public static void releaseHold(MinecraftServer s, UUID id) {
+        if (HOLD.remove(id) == null) return;
+        ServerPlayer on = s.getPlayerList().getPlayer(id);
+        if (on != null && Mts.isSeated(on)) Mts.unseat(on);
+    }
+
+    private static R board(ServerPlayer p, PoliceData d, UUID t, boolean in) {
+        MinecraftServer s = p.server;
+        ServerPlayer on = s.getPlayerList().getPlayer(t);
+        if (on == null) return R.err("Ce citoyen n'est pas connecté.");
+        if (!in) {
+            if (!HOLD.containsKey(t)) return R.err("Ce citoyen n'est pas embarqué dans un véhicule de police.");
+            releaseHold(s, t);
+            tell(s, t, "§eLa police vous a fait sortir du véhicule.");
+            return R.ok(display(s, t) + " est sorti du véhicule.");
+        }
+        if (HOLD.containsKey(t)) return R.err("Ce citoyen est déjà embarqué.");
+        if (!near(p, on)) return R.err("Le citoyen doit être à moins de " + PoliceConfig.get().distance_saisie + " blocs de vous.");
+        net.minecraft.world.entity.Entity veh = Mts.nearestWithSeat(p, SUSPECT_SEAT, BOARD_RADIUS);
+        if (veh == null) return R.err("Aucun véhicule de police avec une place arrière libre à moins de " + (int) BOARD_RADIUS + " blocs.");
+        if (on.isPassenger()) Mts.unseat(on);
+        if (!Mts.seatPlayer(on, veh, SUSPECT_SEAT)) return R.err("Impossible d'installer le suspect (siège indisponible).");
+        HOLD.put(t, new Hold(veh.getUUID()));
+        record(d, t, PoliceData.NOTE, p, "Embarqué à l'arrière d'un véhicule de police");
+        tell(s, t, "§cLa police vous a installé à l'arrière du véhicule. Vous ne pouvez pas en sortir.");
+        return R.ok(display(s, t) + " est installé à l'arrière du véhicule.");
+    }
+
+    /** Toutes les 10 ticks : un suspect embarqué qui a quitté son siège y est remis ; garde levée si le véhicule a disparu. */
+    @SubscribeEvent
+    public static void holdTick(TickEvent.ServerTickEvent e) {
+        if (e.phase != TickEvent.Phase.END || HOLD.isEmpty() || e.getServer().getTickCount() % 10 != 0) return;
+        MinecraftServer s = e.getServer();
+        for (Map.Entry<UUID, Hold> en : new ArrayList<>(HOLD.entrySet())) {
+            ServerPlayer on = s.getPlayerList().getPlayer(en.getKey());
+            if (on == null || on.isDeadOrDying()) { HOLD.remove(en.getKey()); continue; }
+            net.minecraft.world.entity.Entity veh = on.serverLevel().getEntity(en.getValue().vehicle());
+            if (veh == null || !veh.isAlive()) { HOLD.remove(en.getKey()); continue; }
+            if (!Mts.isSeated(on)) Mts.seatPlayer(on, veh, SUSPECT_SEAT);
+        }
     }
 
     // ------------------------------------------------------------------ outils
@@ -422,6 +579,13 @@ public final class PoliceService {
                 sendDossier(p, t, r.msg(), r.ok());
             }
             case ModNetwork.A_RADARS -> sendRadars(p, "", true);
+            case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
+            case ModNetwork.A_DUTY -> { setDuty(s, p.getUUID(), !onDuty(p.getUUID())); reopen(p, k.n(), rank); }
+            case ModNetwork.A_DISPATCH -> {
+                if (isDispatcher(p)) sendDispatch(p, "", true);
+                else sendList(p, "L'onglet DISPATCH est réservé au plus haut gradé en service.", false);
+            }
+            case ModNetwork.A_DISPATCH_MSG -> { R r = dispatchMessage(p, t, clean(k.a())); sendDispatch(p, r.msg(), r.ok()); }
             // Bureau du commissariat : c'est le mod Accueil Police qui affiche son propre écran à la place de la tablette.
             case ModNetwork.A_DESK -> { if (!Compat.openAccueilDesk(p)) sendList(p, "Le mod Accueil Police n'est pas installé sur le serveur.", false); }
             case ModNetwork.A_PLATES -> {
@@ -595,6 +759,7 @@ public final class PoliceService {
     @SubscribeEvent
     public static void logout(PlayerEvent.PlayerLoggedOutEvent e) {
         SESSIONS.remove(e.getEntity().getUUID());
+        if (e.getEntity() instanceof ServerPlayer p) { setDuty(p.server, p.getUUID(), false); HOLD.remove(p.getUUID()); }
     }
 
     /** Toutes les minutes : nouvelle tentative de prélèvement des amendes impayées. */

@@ -20,7 +20,7 @@ public final class ModNetwork {
     private ModNetwork() {}
 
     // Vues envoyées par le serveur.
-    public static final int V_LIST = 0, V_DOSSIER = 1, V_REQUESTS = 2, V_ROSTER = 3, V_INVENTORY = 4, V_RADARS = 5, V_PLATES = 6;
+    public static final int V_LIST = 0, V_DOSSIER = 1, V_REQUESTS = 2, V_ROSTER = 3, V_INVENTORY = 4, V_RADARS = 5, V_PLATES = 6, V_DISPATCH = 7;
     // Actions envoyées par la tablette.
     public static final int A_LIST = 1, A_OPEN = 2, A_REQUESTS = 3, A_ROSTER = 4, A_INVENTORY = 5, A_FINE = 6, A_RECORD = 7, A_DELETE = 8,
             A_WANTED = 9, A_REQUEST = 10, A_DECIDE = 11, A_SEIZE = 12, A_GRADE = 13, A_CLOSE = 14,
@@ -28,10 +28,18 @@ public final class ModNetwork {
             /** Ouvre le bureau du mod Accueil Police (plaintes, rendez-vous, objets trouvés, fourrière). */
             A_DESK = 18,
             /** Garde à vue (n = 0) ou prison (n = 1) de m minutes, motif a. */
-            A_JAIL = 19, A_RELEASE = 20;
+            A_JAIL = 19, A_RELEASE = 20,
+            /** Prise / fin de service (n = vue actuelle, pour la réafficher). */
+            A_DUTY = 21,
+            /** Ouvre l'onglet DISPATCH (réservé au plus haut gradé en service). */
+            A_DISPATCH = 22,
+            /** Message du dispatch : target = un policier en service (NONE = tous), a = texte. */
+            A_DISPATCH_MSG = 23,
+            /** Embarque (n = 1) ou fait sortir (n = 0) un suspect du véhicule de police le plus proche (sièges arrière). */
+            A_BOARD = 24;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "4";
+    private static final String PROTOCOL = "6";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -64,18 +72,20 @@ public final class ModNetwork {
      *  jailType : -1 = libre, sinon garde à vue / prison (PoliceData.JAIL_*), jailMinutes restantes dans la cellule jailCell. */
     public record Dossier(UUID id, String name, List<String> identity, boolean online, boolean near, String wantedReason, int points,
                           List<String> licences, List<String> impound, List<RecView> records, int searchMinutes, long unpaid,
-                          boolean permisMod, boolean vehiclesMod, List<String> vehicles, int jailType, int jailMinutes, String jailCell) {
+                          boolean permisMod, boolean vehiclesMod, List<String> vehicles, int jailType, int jailMinutes, String jailCell,
+                          boolean vehicleNear, boolean boarded) {
         static void encode(FriendlyByteBuf b, Dossier d) {
             b.writeUUID(d.id); b.writeUtf(d.name); strings(b, d.identity); b.writeBoolean(d.online); b.writeBoolean(d.near);
             b.writeUtf(d.wantedReason); b.writeInt(d.points); strings(b, d.licences); strings(b, d.impound);
             b.writeCollection(d.records, RecView::encode); b.writeVarInt(d.searchMinutes); b.writeLong(d.unpaid);
             b.writeBoolean(d.permisMod); b.writeBoolean(d.vehiclesMod); strings(b, d.vehicles);
             b.writeInt(d.jailType); b.writeVarInt(d.jailMinutes); b.writeUtf(d.jailCell);
+            b.writeBoolean(d.vehicleNear); b.writeBoolean(d.boarded);
         }
         static Dossier decode(FriendlyByteBuf b) {
             return new Dossier(b.readUUID(), b.readUtf(), strings(b), b.readBoolean(), b.readBoolean(), b.readUtf(), b.readInt(),
                     strings(b), strings(b), b.readList(RecView::decode), b.readVarInt(), b.readLong(), b.readBoolean(), b.readBoolean(), strings(b),
-                    b.readInt(), b.readVarInt(), b.readUtf());
+                    b.readInt(), b.readVarInt(), b.readUtf(), b.readBoolean(), b.readBoolean());
         }
     }
     public record ReqView(int id, int type, String target, String by, String reason, long time, int status, String decidedBy) {
@@ -119,6 +129,30 @@ public final class ModNetwork {
         }
     }
 
+    /** Policier en service vu par le dispatch : position et distance au dispatcher (-1 = autre dimension). */
+    public record DutyView(UUID id, String name, int grade, long since, String dim, int x, int y, int z, int distance, boolean self) {
+        static void encode(FriendlyByteBuf b, DutyView o) {
+            b.writeUUID(o.id); b.writeUtf(o.name); b.writeVarInt(o.grade); b.writeLong(o.since); b.writeUtf(o.dim);
+            b.writeInt(o.x); b.writeInt(o.y); b.writeInt(o.z); b.writeInt(o.distance); b.writeBoolean(o.self);
+        }
+        static DutyView decode(FriendlyByteBuf b) {
+            return new DutyView(b.readUUID(), b.readUtf(), b.readVarInt(), b.readLong(), b.readUtf(), b.readInt(), b.readInt(), b.readInt(),
+                    b.readInt(), b.readBoolean());
+        }
+    }
+
+    /** État de service : onDuty = ce policier a pris son poste ; dispatcher = il est le plus haut gradé en service ; duty = liste (dispatcher seulement). */
+    public record Duty(boolean onDuty, boolean dispatcher, String dispatcherName, int onDutyCount, List<DutyView> duty) {
+        static final Duty NONE_DUTY = new Duty(false, false, "", 0, List.of());
+        static void encode(FriendlyByteBuf b, Duty d) {
+            b.writeBoolean(d.onDuty); b.writeBoolean(d.dispatcher); b.writeUtf(d.dispatcherName); b.writeVarInt(d.onDutyCount);
+            b.writeCollection(d.duty, DutyView::encode);
+        }
+        static Duty decode(FriendlyByteBuf b) {
+            return new Duty(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readVarInt(), b.readList(DutyView::decode));
+        }
+    }
+
     /** Client -> serveur : tir du taser (clic gauche). Le serveur vérifie l'objet en main, le recharge et les cartouches. */
     public record TaserFirePacket() {
         static void handle(TaserFirePacket p, Supplier<NetworkEvent.Context> c) {
@@ -130,7 +164,7 @@ public final class ModNetwork {
     /** Une vue complète de la tablette. Les listes qui ne concernent pas la vue sont vides ; dossier peut être null. */
     public record ViewPacket(int view, int grade, String message, boolean ok, String query, int page, int pages, int pendingRequests,
                              List<Citizen> citizens, Dossier dossier, List<ReqView> requests, List<Officer> officers, List<Inv> inventory,
-                             List<FlashView> flashes, List<PlateView> plates) {
+                             List<FlashView> flashes, List<PlateView> plates, Duty duty) {
         static void encode(ViewPacket p, FriendlyByteBuf b) {
             b.writeVarInt(p.view); b.writeVarInt(p.grade); b.writeUtf(p.message); b.writeBoolean(p.ok); b.writeUtf(p.query);
             b.writeVarInt(p.page); b.writeVarInt(p.pages); b.writeVarInt(p.pendingRequests);
@@ -140,6 +174,7 @@ public final class ModNetwork {
             b.writeCollection(p.requests, ReqView::encode); b.writeCollection(p.officers, Officer::encode); b.writeCollection(p.inventory, Inv::encode);
             b.writeCollection(p.flashes, FlashView::encode);
             b.writeCollection(p.plates, PlateView::encode);
+            Duty.encode(b, p.duty);
         }
         static ViewPacket decode(FriendlyByteBuf b) {
             int view = b.readVarInt(), grade = b.readVarInt();
@@ -149,7 +184,7 @@ public final class ModNetwork {
             Dossier dossier = b.readBoolean() ? Dossier.decode(b) : null;
             return new ViewPacket(view, grade, message, ok, query, page, pages, pending, citizens, dossier,
                     b.readList(ReqView::decode), b.readList(Officer::decode), b.readList(Inv::decode), b.readList(FlashView::decode),
-                    b.readList(PlateView::decode));
+                    b.readList(PlateView::decode), Duty.decode(b));
         }
         static void handle(ViewPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
