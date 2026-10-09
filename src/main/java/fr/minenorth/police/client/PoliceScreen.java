@@ -137,7 +137,9 @@ public class PoliceScreen extends Screen {
         bSearch = bReason = bAmount = bPoints = bName = bPlate = bImmat = bDuration = bMsg = null;
 
         boolean inDossier = v.view() == ModNetwork.V_DOSSIER || v.view() == ModNetwork.V_INVENTORY;
-        btn(left + W - 100, top + 10, 86, 16, inDossier ? "Retour" : "Fermer", MineNorthButton.GHOST, this::back);
+        // En-tête : « Retour » (dossier) en haut à droite ; sinon « Fermer » sur la 2e ligne, sous le bouton de service.
+        if (inDossier) btn(left + W - 100, top + 10, 86, 16, "Retour", MineNorthButton.GHOST, this::back);
+        else btn(left + W - 100, top + 25, 86, 12, "Fermer", MineNorthButton.GHOST, this::back);
 
         int x = left + 14, w = W - 28;
         if (inDossier && v.dossier() != null) {
@@ -147,7 +149,8 @@ public class PoliceScreen extends Screen {
         }
         // Service : chaque policier prend ou quitte son poste quand il le souhaite.
         boolean duty = v.duty().onDuty();
-        btn(left + W - 212, top + 9, 104, 18, duty ? "FIN DE SERVICE" : "PRENDRE SON POSTE", duty ? RED : MineNorthStyle.GREEN,
+        // Bouton de service : colonne de droite de l'en-tête (au-delà du titre et du sous-titre), aligné sur le bord droit.
+        btn(left + W - 14 - 126, top + 7, 126, 16, duty ? "FIN DE SERVICE" : "PRISE DE SERVICE", duty ? RED : MineNorthStyle.GREEN,
                 () -> { keep(); send(ModNetwork.A_DUTY, null, "", "", v.view(), 0); });
         // Navigation principale : les largeurs s'adaptent au nombre d'onglets (DISPATCH pour le plus haut gradé en service).
         String req = v.pendingRequests() > 0 ? "DEMANDES (" + v.pendingRequests() + ")" : "DEMANDES";
@@ -170,7 +173,7 @@ public class PoliceScreen extends Screen {
             tx += bw + gap;
         }
         String g = "Grade : " + GRADES[Math.max(0, Math.min(2, v.grade()))];
-        label(g, left + W - 14 - font.width(g), top + 29, MineNorthStyle.MUTED);
+        label(g, left + W - 14 - 46 - font.width(g), top + 27, MineNorthStyle.MUTED);
 
         if (v.view() == ModNetwork.V_REQUESTS) buildRequests(x, w);
         else if (v.view() == ModNetwork.V_ROSTER) buildRoster(x, w);

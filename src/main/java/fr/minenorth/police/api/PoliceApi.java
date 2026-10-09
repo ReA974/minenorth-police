@@ -21,6 +21,9 @@ public final class PoliceApi {
         return PoliceData.get(p.server).officers.containsKey(p.getUUID());
     }
 
+    /** Vrai si ce policier a pris son service (utilisé par le mod Véhicules : concessionnaires et garages de police). */
+    public static boolean onDuty(UUID id) { return id != null && PoliceService.onDuty(id); }
+
     /** Vrai si ce policier peut ouvrir les portes de ce citoyen (perquisition acceptée et encore valable). */
     public static boolean canSearch(ServerPlayer officer, UUID owner) {
         // Uniquement tant que le citoyen est connecté : pas de perquisition chez un joueur absent.
