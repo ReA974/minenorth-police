@@ -360,11 +360,36 @@ public final class PoliceService {
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), duty(p, true)));
     }
 
+    /** Onglet ALERTES : appels d'urgence « police » passés depuis le téléphone des joueurs. */
+    private static void sendAlerts(ServerPlayer p, String msg, boolean ok) {
+        PoliceData d = PoliceData.get(p.server);
+        String dim = p.level().dimension().location().toString();
+        List<ModNetwork.CallView> calls = new ArrayList<>();
+        for (fr.minenorth.api.EmergencyCall c : fr.minenorth.api.MineNorth.calls().activeCalls(p.server, fr.minenorth.api.EmergencyCall.POLICE)) {
+            int dist = c.dim().equals(dim) ? (int) Math.sqrt(p.distanceToSqr(c.x() + 0.5, c.y(), c.z() + 0.5)) : -1;
+            calls.add(new ModNetwork.CallView(c.id(), c.label(), c.caller(), c.dim(), c.x(), c.y(), c.z(), c.description(), c.ageSeconds(), dist));
+        }
+        ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_ALERTS, rank(p), msg, ok, "", 0, 1, pending(d),
+                List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), duty(p, false), calls));
+    }
+
+    /** Guidage sur la carte vers un appel d'urgence du téléphone. */
+    private static void guideCall(ServerPlayer p, String id) {
+        long callId;
+        try { callId = Long.parseLong(id.trim()); } catch (NumberFormatException e) { sendAlerts(p, "Appel inconnu.", false); return; }
+        fr.minenorth.api.EmergencyCall call = fr.minenorth.api.MineNorth.calls().activeCalls(p.server, fr.minenorth.api.EmergencyCall.POLICE)
+                .stream().filter(c -> c.id() == callId).findFirst().orElse(null);
+        if (call == null) { sendAlerts(p, "Cet appel n'est plus actif.", false); return; }
+        fr.minenorth.police.compat.MapBridge.set(p, "Appel #" + call.id(), call.dim(), call.x(), call.y(), call.z(), 0x3949AB, true);
+        sendAlerts(p, "Guidage activé vers l'appel de " + call.caller() + (fr.minenorth.police.compat.MapBridge.available() ? "." : " (carte absente)."), true);
+    }
+
     /** Réaffiche la vue d'où le policier a pris / quitté son poste (les vues à saisie reviennent à la liste). */
     private static void reopen(ServerPlayer p, int view, int rank) {
         switch (view) {
             case ModNetwork.V_REQUESTS -> sendRequests(p, "", true);
             case ModNetwork.V_RADARS -> sendRadars(p, "", true);
+            case ModNetwork.V_ALERTS -> sendAlerts(p, "", true);
             case ModNetwork.V_ROSTER -> { if (rank == PoliceData.COMMISSAIRE) sendRoster(p, "", true); else sendList(p, "", true); }
             case ModNetwork.V_DISPATCH -> { if (isDispatcher(p)) sendDispatch(p, "", true); else sendList(p, "", true); }
             default -> sendList(p, "", true);
@@ -579,6 +604,8 @@ public final class PoliceService {
                 sendDossier(p, t, r.msg(), r.ok());
             }
             case ModNetwork.A_RADARS -> sendRadars(p, "", true);
+            case ModNetwork.A_ALERTS -> sendAlerts(p, "", true);
+            case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
             case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DUTY -> { setDuty(s, p.getUUID(), !onDuty(p.getUUID())); reopen(p, k.n(), rank); }
             case ModNetwork.A_DISPATCH -> {

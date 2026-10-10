@@ -30,6 +30,7 @@ public class PoliceScreen extends Screen {
     private int page;
     private String message = "";
     private boolean messageOk = true;
+    private long receivedAt = System.currentTimeMillis();
 
     private EditBox bSearch, bReason, bAmount, bPoints, bName, bPlate, bImmat, bDuration, bMsg;
     private String kSearch = "", kReason = "", kAmount = "", kPoints = "", kName = "", kPlate = "", kImmat = "", kDuration = "", kMsg = "";
@@ -58,6 +59,7 @@ public class PoliceScreen extends Screen {
         if (n.view() != v.view()) page = 0;
         if (n.view() == ModNetwork.V_DOSSIER && !sameDossier) { tab = 0; page = 0; kReason = kAmount = kPoints = kDuration = ""; }
         this.v = n;
+        this.receivedAt = System.currentTimeMillis();
         this.message = n.message();
         this.messageOk = n.ok();
         if (n.ok() && !n.message().isEmpty()) { kAmount = kPoints = kDuration = ""; kName = ""; kMsg = ""; if (n.view() != ModNetwork.V_INVENTORY) kReason = ""; }
@@ -157,6 +159,8 @@ public class PoliceScreen extends Screen {
         List<Nav> nav = new ArrayList<>();
         nav.add(new Nav("CITOYENS", v.view() == ModNetwork.V_LIST, () -> { keep(); send(ModNetwork.A_LIST, null, kSearch, "", 0, 0); }));
         nav.add(new Nav(req, v.view() == ModNetwork.V_REQUESTS, () -> send(ModNetwork.A_REQUESTS, null, "", "", 0, 0)));
+        nav.add(new Nav(v.view() == ModNetwork.V_ALERTS && !v.calls().isEmpty() ? "ALERTES (" + v.calls().size() + ")" : "ALERTES",
+                v.view() == ModNetwork.V_ALERTS, () -> send(ModNetwork.A_ALERTS, null, "", "", 0, 0)));
         nav.add(new Nav("RADARS", v.view() == ModNetwork.V_RADARS, () -> send(ModNetwork.A_RADARS, null, "", "", 0, 0)));
         nav.add(new Nav("IMMAT.", v.view() == ModNetwork.V_PLATES,
                 () -> { keep(); send(ModNetwork.A_PLATES, null, v.view() == ModNetwork.V_PLATES ? kImmat : "", "", 0, 0); }));
@@ -165,7 +169,7 @@ public class PoliceScreen extends Screen {
         if (v.grade() == 0) nav.add(new Nav("EFFECTIFS", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
         if (v.duty().dispatcher()) nav.add(new Nav("DISPATCH", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
         int pad = 12, gap = 3;
-        while (pad > 4 && totalWidth(nav, pad, gap) > w) pad--;
+        while (pad > 2 && totalWidth(nav, pad, gap) > w) pad--;
         int tx = x;
         for (Nav n : nav) {
             int bw = font.width(n.label()) + pad;
@@ -178,6 +182,7 @@ public class PoliceScreen extends Screen {
         if (v.view() == ModNetwork.V_REQUESTS) buildRequests(x, w);
         else if (v.view() == ModNetwork.V_ROSTER) buildRoster(x, w);
         else if (v.view() == ModNetwork.V_RADARS) buildRadars(x, w);
+        else if (v.view() == ModNetwork.V_ALERTS) buildAlerts(x, w);
         else if (v.view() == ModNetwork.V_PLATES) buildPlates(x, w);
         else if (v.view() == ModNetwork.V_DISPATCH) buildDispatch(x, w);
         else buildList(x, w);
@@ -445,6 +450,33 @@ public class PoliceScreen extends Screen {
     }
 
     // ---------- radars fixes : flashs (plaque, modèle, vitesse, lieu)
+    /** Appels d'urgence « police » du téléphone : plus anciens d'abord ; GUIDER pose le point sur la carte. */
+    private void buildAlerts(int x, int w) {
+        int y0 = top + 72, rows = 4;
+        List<ModNetwork.CallView> list = v.calls();
+        int pages = Math.max(1, (list.size() + rows - 1) / rows);
+        page = Math.max(0, Math.min(pages - 1, page));
+        if (list.isEmpty()) label("Aucun appel d'urgence en cours.", x, y0 + 6, MineNorthStyle.OK, w);
+        for (int i = 0; i < rows; i++) {
+            int idx = page * rows + i;
+            if (idx >= list.size()) break;
+            ModNetwork.CallView c = list.get(idx);
+            int y = y0 + i * 30;
+            card(x, y, w, 28, 0xFF4FC3F7);
+            int min = c.age() / 60, sec = c.age() % 60;
+            label(c.label(), x + 8, y + 4, MineNorthStyle.WHITE, 150);
+            label("il y a " + (min > 0 ? min + " min " : "") + sec + " s", x + 164, y + 4, MineNorthStyle.MUTED, 90);
+            String where = c.x() + " " + c.y() + " " + c.z() + (c.distance() >= 0 ? "  (" + c.distance() + " m)" : "  (autre dimension)");
+            label(where, x + 8, y + 16, MineNorthStyle.TEXT, 150);
+            label(c.caller() + (c.description().isBlank() ? "" : " : " + c.description()), x + 164, y + 16, MineNorthStyle.CYAN, w - 164 - 84);
+            btn(x + w - 78, y + 6, 74, 16, "GUIDER", MineNorthStyle.GREEN, () -> send(ModNetwork.A_CALL_GUIDE, null, String.valueOf(c.id()), "", 0, 0));
+        }
+        int yb = top + H - 38;
+        btn(x, yb, 110, 18, "ACTUALISER", MineNorthStyle.DARK, () -> send(ModNetwork.A_ALERTS, null, "", "", 0, 0));
+        if (!v.duty().onDuty()) label("Prenez votre service pour être alerté dans le chat.", x + 118, yb + 5, MineNorthStyle.WARN, w - 118 - 90);
+        pager(pages, x + w, yb, () -> go(() -> page--), () -> go(() -> page++), page);
+    }
+
     private void buildRadars(int x, int w) {
         int y0 = top + 72, rows = 4;
         bPlate = box(x, y0, 150, "Filtrer : plaque ou modèle", kPlate, 24);
@@ -611,6 +643,16 @@ public class PoliceScreen extends Screen {
                     messageOk ? MineNorthStyle.OK : MineNorthStyle.ALERT, false);
         }
         super.render(g, mx, my, pt);
+    }
+
+    /** Les appels changent vite : l'onglet ALERTES se recharge tout seul toutes les 5 secondes. */
+    @Override
+    public void tick() {
+        super.tick();
+        if (v.view() == ModNetwork.V_ALERTS && System.currentTimeMillis() - receivedAt > 5000) {
+            receivedAt = System.currentTimeMillis();
+            send(ModNetwork.A_ALERTS, null, "", "", 0, 0);
+        }
     }
 
     @Override

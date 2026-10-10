@@ -20,7 +20,9 @@ public final class ModNetwork {
     private ModNetwork() {}
 
     // Vues envoyées par le serveur.
-    public static final int V_LIST = 0, V_DOSSIER = 1, V_REQUESTS = 2, V_ROSTER = 3, V_INVENTORY = 4, V_RADARS = 5, V_PLATES = 6, V_DISPATCH = 7;
+    public static final int V_LIST = 0, V_DOSSIER = 1, V_REQUESTS = 2, V_ROSTER = 3, V_INVENTORY = 4, V_RADARS = 5, V_PLATES = 6, V_DISPATCH = 7,
+            /** Appels d'urgence passés depuis le téléphone (urgence 17). */
+            V_ALERTS = 8;
     // Actions envoyées par la tablette.
     public static final int A_LIST = 1, A_OPEN = 2, A_REQUESTS = 3, A_ROSTER = 4, A_INVENTORY = 5, A_FINE = 6, A_RECORD = 7, A_DELETE = 8,
             A_WANTED = 9, A_REQUEST = 10, A_DECIDE = 11, A_SEIZE = 12, A_GRADE = 13, A_CLOSE = 14,
@@ -36,10 +38,14 @@ public final class ModNetwork {
             /** Message du dispatch : target = un policier en service (NONE = tous), a = texte. */
             A_DISPATCH_MSG = 23,
             /** Embarque (n = 1) ou fait sortir (n = 0) un suspect du véhicule de police le plus proche (sièges arrière). */
-            A_BOARD = 24;
+            A_BOARD = 24,
+            /** Ouvre l'onglet ALERTES (appels d'urgence du téléphone). */
+            A_ALERTS = 25,
+            /** Guidage sur la carte vers un appel d'urgence : a = id de l'appel. */
+            A_CALL_GUIDE = 26;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "6";
+    private static final String PROTOCOL = "7";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -161,10 +167,29 @@ public final class ModNetwork {
         }
     }
 
+    /** Appel d'urgence du téléphone : age en secondes, distance en blocs au policier (-1 = autre dimension). */
+    public record CallView(long id, String label, String caller, String dim, int x, int y, int z, String description, int age, int distance) {
+        static void encode(FriendlyByteBuf b, CallView c) {
+            b.writeLong(c.id); b.writeUtf(c.label); b.writeUtf(c.caller); b.writeUtf(c.dim); b.writeInt(c.x); b.writeInt(c.y); b.writeInt(c.z);
+            b.writeUtf(c.description, 200); b.writeVarInt(c.age); b.writeInt(c.distance);
+        }
+        static CallView decode(FriendlyByteBuf b) {
+            return new CallView(b.readLong(), b.readUtf(), b.readUtf(), b.readUtf(), b.readInt(), b.readInt(), b.readInt(), b.readUtf(200),
+                    b.readVarInt(), b.readInt());
+        }
+    }
+
     /** Une vue complète de la tablette. Les listes qui ne concernent pas la vue sont vides ; dossier peut être null. */
     public record ViewPacket(int view, int grade, String message, boolean ok, String query, int page, int pages, int pendingRequests,
                              List<Citizen> citizens, Dossier dossier, List<ReqView> requests, List<Officer> officers, List<Inv> inventory,
-                             List<FlashView> flashes, List<PlateView> plates, Duty duty) {
+                             List<FlashView> flashes, List<PlateView> plates, Duty duty, List<CallView> calls) {
+        /** Vues sans appels d'urgence (toutes sauf ALERTES). */
+        public ViewPacket(int view, int grade, String message, boolean ok, String query, int page, int pages, int pendingRequests,
+                          List<Citizen> citizens, Dossier dossier, List<ReqView> requests, List<Officer> officers, List<Inv> inventory,
+                          List<FlashView> flashes, List<PlateView> plates, Duty duty) {
+            this(view, grade, message, ok, query, page, pages, pendingRequests, citizens, dossier, requests, officers, inventory,
+                    flashes, plates, duty, List.of());
+        }
         static void encode(ViewPacket p, FriendlyByteBuf b) {
             b.writeVarInt(p.view); b.writeVarInt(p.grade); b.writeUtf(p.message); b.writeBoolean(p.ok); b.writeUtf(p.query);
             b.writeVarInt(p.page); b.writeVarInt(p.pages); b.writeVarInt(p.pendingRequests);
@@ -175,6 +200,7 @@ public final class ModNetwork {
             b.writeCollection(p.flashes, FlashView::encode);
             b.writeCollection(p.plates, PlateView::encode);
             Duty.encode(b, p.duty);
+            b.writeCollection(p.calls, CallView::encode);
         }
         static ViewPacket decode(FriendlyByteBuf b) {
             int view = b.readVarInt(), grade = b.readVarInt();
@@ -184,7 +210,7 @@ public final class ModNetwork {
             Dossier dossier = b.readBoolean() ? Dossier.decode(b) : null;
             return new ViewPacket(view, grade, message, ok, query, page, pages, pending, citizens, dossier,
                     b.readList(ReqView::decode), b.readList(Officer::decode), b.readList(Inv::decode), b.readList(FlashView::decode),
-                    b.readList(PlateView::decode), Duty.decode(b));
+                    b.readList(PlateView::decode), Duty.decode(b), b.readList(CallView::decode));
         }
         static void handle(ViewPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
