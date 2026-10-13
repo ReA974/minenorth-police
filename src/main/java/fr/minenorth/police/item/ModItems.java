@@ -28,10 +28,7 @@ public final class ModItems {
 
     /** Onglet « Police MineNorth » du menu créatif. */
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MineNorthPolice.MOD_ID);
-    public static final RegistryObject<CreativeModeTab> TAB = TABS.register("police", () -> CreativeModeTab.builder()
-            .title(Component.translatable("itemGroup.minenorthpolice"))
-            .icon(() -> new ItemStack(TABLET.get()))
-            .displayItems((params, out) -> {
+    public static final net.minecraft.world.item.CreativeModeTab.DisplayItemsGenerator TAB_ITEMS = (params, out) -> {
                 out.accept(TABLET.get());
                 out.accept(RADAR_MAIN.get());
                 out.accept(RADAR_FIXE.get());
@@ -39,11 +36,9 @@ public final class ModItems {
                 out.accept(CARTOUCHE_TASER.get());
                 out.accept(TEST_SALIVAIRE.get());
                 out.accept(DETECTEUR_METAUX.get());
-            })
-            .build());
+            };
 
     public static void register(IEventBus modBus) {
         ITEMS.register(modBus);
-        TABS.register(modBus);
     }
 }
