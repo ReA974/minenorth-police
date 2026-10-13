@@ -34,6 +34,18 @@ public final class Compat {
         }
     }
 
+    /** Ouvre chez ce policier le menu de mise en fourrière du mod Véhicules pour ce véhicule (par réflexion). Faux si impossible. */
+    public static boolean openImpound(net.minecraft.server.level.ServerPlayer p, net.minecraft.world.entity.Entity vehicle) {
+        if (!hasVehicles()) return false;
+        try {
+            Class.forName("com.minenorth.vehicles.fourriere.Impound").getMethod("openPoliceMenu", net.minecraft.server.level.ServerPlayer.class,
+                    net.minecraft.world.entity.Entity.class).invoke(null, p, vehicle);
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     public static boolean hasPermis() { return ModList.get().isLoaded("minenorth_permis"); }
     public static boolean hasVehicles() { return ModList.get().isLoaded("minenorth_rp_vehicles"); }
     public static boolean hasIdentity() { return ModList.get().isLoaded("minenorthidentite"); }

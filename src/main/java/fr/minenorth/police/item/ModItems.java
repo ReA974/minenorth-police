@@ -23,6 +23,7 @@ public final class ModItems {
             () -> new BlockItem(ModBlocks.RADAR_FIXE.get(), new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> TEST_SALIVAIRE = ITEMS.register("test_salivaire", SalivaTestItem::new);
     public static final RegistryObject<Item> DETECTEUR_METAUX = ITEMS.register("detecteur_metaux", MetalDetectorItem::new);
+    public static final RegistryObject<Item> FOURRIERE = ITEMS.register("ordre_fourriere", FourriereItem::new);
     public static final RegistryObject<Item> TASER = ITEMS.register("taser", TaserItem::new);
     public static final RegistryObject<Item> CARTOUCHE_TASER = ITEMS.register("cartouche_taser", () -> new Item(new Item.Properties().stacksTo(64)));
 
@@ -32,6 +33,7 @@ public final class ModItems {
                 out.accept(TABLET.get());
                 out.accept(RADAR_MAIN.get());
                 out.accept(RADAR_FIXE.get());
+                out.accept(FOURRIERE.get());
                 out.accept(TASER.get());
                 out.accept(CARTOUCHE_TASER.get());
                 out.accept(TEST_SALIVAIRE.get());

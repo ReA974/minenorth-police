@@ -77,3 +77,9 @@ inverse (y compris par outils d'intelligence artificielle) et utilisation pour e
 
 ## Transport de suspects (véhicules du pack `minenorthpolicecar`)
 Onglet **TRANSPORT** du dossier : **EMBARQUER LE SUSPECT** l'installe sur un siège `seat_suspect` du véhicule de police le plus proche (8 blocs, suspect à portée). S'il quitte son siège, il y est remis ; **FAIRE SORTIR** le libère. Une mise en détention lève l'embarquement.
+
+## Mise en fourrière (13/10)
+- Objet **Ordre de fourrière** (`ordre_fourriere`, onglet créatif Police) : clic droit sur le véhicule visé (8 blocs) ouvre le menu de mise en fourrière du mod Véhicules
+  (propriétaire, plaque, appel du mécano, mise en fourrière forcée).
+- Tablette : bouton **FOURRIÈRE** dans la barre du haut : même menu pour le véhicule visé (ou le plus proche à 8 blocs).
+- Le menu est celui du mod Véhicules (`Impound.openPoliceMenu`, par réflexion) ; le véhicule doit avoir un propriétaire enregistré.

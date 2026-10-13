@@ -6,5 +6,6 @@
   "item.minenorthpolice.detecteur_metaux": "Détecteur de métaux",
   "item.minenorthpolice.taser": "Taser",
   "item.minenorthpolice.cartouche_taser": "Cartouche de taser",
-  "itemGroup.minenorthpolice": "Police MineNorth"
+  "itemGroup.minenorthpolice": "Police MineNorth",
+  "item.minenorthpolice.ordre_fourriere": "Impound order"
 }

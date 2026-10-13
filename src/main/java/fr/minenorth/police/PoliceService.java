@@ -615,6 +615,19 @@ public final class PoliceService {
             case ModNetwork.A_DISPATCH_MSG -> { R r = dispatchMessage(p, t, clean(k.a())); sendDispatch(p, r.msg(), r.ok()); }
             // Bureau du commissariat : c'est le mod Accueil Police qui affiche son propre écran à la place de la tablette.
             case ModNetwork.A_DESK -> { if (!Compat.openAccueilDesk(p)) sendList(p, "Le mod Accueil Police n'est pas installé sur le serveur.", false); }
+            // Fourrière depuis la tablette : véhicule visé (ou le plus proche, 8 blocs) -> menu du mod Véhicules à la place de la tablette.
+            case ModNetwork.A_IMPOUND -> {
+                net.minecraft.world.entity.Entity veh = fr.minenorth.police.item.PoliceTool.target(p, 8, 20, fr.minenorth.police.compat.Mts::isBuilder);
+                if (veh == null) {
+                    double best = 64;
+                    for (net.minecraft.world.entity.Entity e : p.level().getEntities(p, p.getBoundingBox().inflate(8), fr.minenorth.police.compat.Mts::isBuilder)) {
+                        double dd = e.distanceToSqr(p);
+                        if (dd < best) { best = dd; veh = e; }
+                    }
+                }
+                if (veh == null) sendList(p, "Aucun véhicule à moins de 8 blocs : approchez-vous ou visez-le.", false);
+                else if (!Compat.openImpound(p, veh)) sendList(p, "Mise en fourrière indisponible (mod Véhicules absent ou à mettre à jour).", false);
+            }
             case ModNetwork.A_PLATES -> {
                 if (!Compat.hasVehicles()) { sendPlates(p, "", "Mod Véhicules non installé : pas de fichier des immatriculations.", false); break; }
                 sendPlates(p, clean(k.a()), "", true);

@@ -166,6 +166,7 @@ public class PoliceScreen extends Screen {
                 () -> { keep(); send(ModNetwork.A_PLATES, null, v.view() == ModNetwork.V_PLATES ? kImmat : "", "", 0, 0); }));
         // Ouvre le bureau du mod Accueil Police : plaintes, historique, rendez-vous, objets trouvés, fourrière.
         nav.add(new Nav("BUREAU", false, () -> send(ModNetwork.A_DESK, null, "", "", 0, 0)));
+        nav.add(new Nav("FOURRIÈRE", false, () -> send(ModNetwork.A_IMPOUND, null, "", "", 0, 0)));
         if (v.grade() == 0) nav.add(new Nav("EFFECTIFS", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
         if (v.duty().dispatcher()) nav.add(new Nav("DISPATCH", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
         int pad = 12, gap = 3;

@@ -42,7 +42,9 @@ public final class ModNetwork {
             /** Ouvre l'onglet ALERTES (appels d'urgence du téléphone). */
             A_ALERTS = 25,
             /** Guidage sur la carte vers un appel d'urgence : a = id de l'appel. */
-            A_CALL_GUIDE = 26;
+            A_CALL_GUIDE = 26,
+            /** Mise en fourrière du véhicule visé depuis la tablette. */
+            A_IMPOUND = 27;
     public static final UUID NONE = new UUID(0, 0);
 
     private static final String PROTOCOL = "7";
