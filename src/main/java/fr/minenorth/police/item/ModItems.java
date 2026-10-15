@@ -21,7 +21,7 @@ public final class ModItems {
     public static final RegistryObject<Item> RADAR_MAIN = ITEMS.register("radar_main", HandRadarItem::new);
     public static final RegistryObject<Item> RADAR_FIXE = ITEMS.register("radar_fixe",
             () -> new BlockItem(ModBlocks.RADAR_FIXE.get(), new Item.Properties().stacksTo(16)));
-    public static final RegistryObject<Item> HERSE = ITEMS.register("herse", () -> new HerseItem(ModBlocks.HERSE.get(), new Item.Properties().stacksTo(16)));
+    public static final RegistryObject<Item> HERSE = ITEMS.register("herse", () -> new HerseItem(new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> TEST_SALIVAIRE = ITEMS.register("test_salivaire", SalivaTestItem::new);
     public static final RegistryObject<Item> DETECTEUR_METAUX = ITEMS.register("detecteur_metaux", MetalDetectorItem::new);
     public static final RegistryObject<Item> FOURRIERE = ITEMS.register("ordre_fourriere", FourriereItem::new);
