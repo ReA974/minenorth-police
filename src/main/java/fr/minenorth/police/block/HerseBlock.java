@@ -41,6 +41,17 @@ public class HerseBlock extends HorizontalDirectionalBlock {
     }
 
     @Override
+    public void onPlace(BlockState s, net.minecraft.world.level.Level l, BlockPos p, BlockState old, boolean moved) {
+        if (l instanceof net.minecraft.server.level.ServerLevel sl) fr.minenorth.police.HerseService.added(sl, p);
+    }
+
+    @Override
+    public void onRemove(BlockState s, net.minecraft.world.level.Level l, BlockPos p, BlockState now, boolean moved) {
+        if (!s.is(now.getBlock()) && l instanceof net.minecraft.server.level.ServerLevel sl) fr.minenorth.police.HerseService.removed(sl, p);
+        super.onRemove(s, l, p, now, moved);
+    }
+
+    @Override
     public BlockState rotate(BlockState s, Rotation r) { return s.setValue(FACING, r.rotate(s.getValue(FACING))); }
 
     @Override
