@@ -17,5 +17,6 @@ public class MineNorthPolice {
         fr.minenorth.api.MineNorth.provide(fr.minenorth.api.PoliceService.class, new fr.minenorth.police.api.PoliceProvider());
         ModBlocks.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModItems.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ModEntities.register(FMLJavaModLoadingContext.get().getModEventBus());
     }
 }
