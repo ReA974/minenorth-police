@@ -90,7 +90,7 @@ public final class HerseService {
             if (delta.lengthSqr() < 1e-5) continue;   // à l'arrêt : rien à vérifier
             Data d = data(level);
             if (d.positions.isEmpty() || !nearAny(d, now)) continue;
-            for (Object wheel : MtsTires.wheels(v)) {
+            for (Object wheel : frontWheels(v)) {
                 if (MtsTires.isFlat(wheel)) continue;
                 double[] p = MtsTires.position(wheel);
                 if (p == null || Double.isNaN(p[0])) continue;
@@ -100,6 +100,46 @@ public final class HerseService {
                     level.playSound(null, BlockPos.containing(p[0], p[1], p[2]), SoundEvents.GENERIC_BURN, SoundSource.NEUTRAL, 1.0f, 1.6f);
             }
         }
+    }
+
+    /** Roues avant : celles dont la position longitudinale dans le véhicule (axe Z de MTS = vers l'avant) est dans la moitié avant. */
+    private static java.util.List<Object> frontWheels(Entity v) {
+        java.util.List<Object> all = MtsTires.wheels(v), out = new java.util.ArrayList<>();
+        double sum = 0;
+        for (Object w : all) sum += MtsTires.number(MtsTires.get(w, "localOffset"), "z", 0);
+        double mean = all.isEmpty() ? 0 : sum / all.size();
+        for (Object w : all) if (MtsTires.number(MtsTires.get(w, "localOffset"), "z", 0) >= mean - 0.05) out.add(w);
+        return out;
+    }
+
+    /**
+     * Pose et reprise de la herse par les policiers, SANS passer par les évènements de pose / de casse : là où les policiers n'ont pas de droits
+     * WorldGuard (la route), un BlockItem normal serait refusé. L'évènement est pris en tout premier et annulé, donc rien n'est transmis à WorldGuard.
+     * Clic droit = poser (sur la case visée, ou à côté) ; accroupi + clic droit sur une herse = la reprendre.
+     */
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
+    public static void onUse(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) {
+        if (e.getLevel().isClientSide() || e.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND) return;
+        net.minecraft.world.item.ItemStack st = e.getItemStack();
+        if (!st.is(fr.minenorth.police.item.ModItems.HERSE.get())) return;
+        e.setCanceled(true);
+        e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+        if (!(e.getEntity() instanceof net.minecraft.server.level.ServerPlayer p) || !fr.minenorth.police.item.PoliceTool.allowed(p)) return;
+        ServerLevel level = p.serverLevel();
+        BlockPos hit = e.getPos();
+        if (p.isShiftKeyDown()) {
+            if (level.getBlockState(hit).getBlock() instanceof HerseBlock) {
+                level.removeBlock(hit, false);
+                if (!p.getAbilities().instabuild) p.getInventory().add(new net.minecraft.world.item.ItemStack(fr.minenorth.police.item.ModItems.HERSE.get()));
+                level.playSound(null, hit, SoundEvents.CHAIN_BREAK, SoundSource.BLOCKS, 0.8f, 1.2f);
+            }
+            return;
+        }
+        BlockPos target = level.getBlockState(hit).canBeReplaced() ? hit : hit.relative(e.getFace());
+        if (!level.getBlockState(target).canBeReplaced() || !level.getBlockState(target.below()).isFaceSturdy(level, target.below(), net.minecraft.core.Direction.UP)) return;
+        level.setBlock(target, fr.minenorth.police.block.ModBlocks.HERSE.get().defaultBlockState().setValue(HerseBlock.FACING, p.getDirection()), 3);
+        if (!p.getAbilities().instabuild) st.shrink(1);
+        level.playSound(null, target, SoundEvents.CHAIN_PLACE, SoundSource.BLOCKS, 0.8f, 1.0f);
     }
 
     /** La roue est sur une herse à son emplacement actuel, ou l'a croisée depuis le tick précédent. */
