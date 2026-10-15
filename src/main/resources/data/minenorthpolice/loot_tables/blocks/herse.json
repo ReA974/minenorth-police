@@ -6,7 +6,7 @@
    "entries": [
     {
      "type": "minecraft:item",
-     "name": "minenorthpolice:herse"
+     "name": "minenorthpolice:herse_police"
     }
    ],
    "conditions": [
