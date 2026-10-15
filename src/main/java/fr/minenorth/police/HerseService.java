@@ -90,7 +90,7 @@ public final class HerseService {
             if (delta.lengthSqr() < 1e-5) continue;   // à l'arrêt : rien à vérifier
             Data d = data(level);
             if (d.positions.isEmpty() || !nearAny(d, now)) continue;
-            for (Object wheel : frontWheels(v)) {
+            for (Object wheel : MtsTires.wheels(v)) {
                 if (MtsTires.isFlat(wheel)) continue;
                 double[] p = MtsTires.position(wheel);
                 if (p == null || Double.isNaN(p[0])) continue;
