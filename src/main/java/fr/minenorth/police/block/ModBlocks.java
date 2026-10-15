@@ -16,6 +16,8 @@ public final class ModBlocks {
 
     public static final RegistryObject<Block> RADAR_FIXE = BLOCKS.register("radar_fixe", RadarBlock::new);
 
+    public static final RegistryObject<Block> HERSE = BLOCKS.register("herse", HerseBlock::new);
+
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<RadarBlockEntity>> RADAR_FIXE_BE = BLOCK_ENTITIES.register("radar_fixe",
             () -> BlockEntityType.Builder.of(RadarBlockEntity::new, RADAR_FIXE.get()).build(null));

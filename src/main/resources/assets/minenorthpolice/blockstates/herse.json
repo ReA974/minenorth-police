@@ -1,0 +1,1 @@
+{"variants":{"facing=north":{"model":"minenorthpolice:block/herse"},"facing=south":{"model":"minenorthpolice:block/herse","y":180},"facing=east":{"model":"minenorthpolice:block/herse","y":90},"facing=west":{"model":"minenorthpolice:block/herse","y":270}}}
