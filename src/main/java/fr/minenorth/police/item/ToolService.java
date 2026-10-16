@@ -228,7 +228,7 @@ public final class ToolService {
     /** Un radar fixe ne peut être démonté que par un policier (ou en créatif). */
     @SubscribeEvent
     public static void breakRadar(BlockEvent.BreakEvent e) {
-        if (!e.getState().is(ModBlocks.RADAR_FIXE.get())) return;
+        if (!e.getState().is(ModBlocks.RADAR_FIXE.get()) && !e.getState().is(ModBlocks.RADAR_BORNE.get())) return;
         if (!(e.getPlayer() instanceof ServerPlayer p) || p.getAbilities().instabuild || PoliceService.rank(p) >= 0) return;
         e.setCanceled(true);
         p.displayClientMessage(Component.literal("§cSeule la police peut démonter un radar."), true);

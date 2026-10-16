@@ -1,6 +1,7 @@
 {
  "replace": false,
  "values": [
-  "minenorthpolice:radar_fixe"
+  "minenorthpolice:radar_fixe",
+  "minenorthpolice:radar_borne"
  ]
 }

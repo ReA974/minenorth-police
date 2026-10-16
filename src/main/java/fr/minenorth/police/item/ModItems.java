@@ -19,8 +19,16 @@ public final class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MineNorthPolice.MOD_ID);
     public static final RegistryObject<Item> TABLET = ITEMS.register("tablette_police", TabletItem::new);
     public static final RegistryObject<Item> RADAR_MAIN = ITEMS.register("radar_main", HandRadarItem::new);
-    public static final RegistryObject<Item> RADAR_FIXE = ITEMS.register("radar_fixe",
-            () -> new BlockItem(ModBlocks.RADAR_FIXE.get(), new Item.Properties().stacksTo(16)));
+    /**
+     * Radars à poser : des objets simples (pas des BlockItem) et de nom différent du bloc, posés par code (voir {@link RadarPlacerItem}) :
+     * WorldGuard ne voit aucune pose de bloc. Radar mobile = trépied (bloc radar_fixe), radar fixe = borne de 2 blocs (bloc radar_borne).
+     */
+    public static final RegistryObject<Item> RADAR_MOBILE = ITEMS.register("radar_mobile",
+            () -> new RadarPlacerItem(ModBlocks.RADAR_FIXE, new Item.Properties().stacksTo(16)));
+    public static final RegistryObject<Item> RADAR_FIXE_POLICE = ITEMS.register("radar_fixe_police",
+            () -> new RadarPlacerItem(ModBlocks.RADAR_BORNE, new Item.Properties().stacksTo(16)));
+    /** Objet illégal : désactive un radar posé pendant la durée de la config et alerte la police (tablette, carte, chat). */
+    public static final RegistryObject<Item> RADAR_HACK = ITEMS.register("pirate_radar", RadarHackItem::new);
     public static final RegistryObject<Item> HERSE = ITEMS.register("herse_police", () -> new HerseItem(new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> TEST_SALIVAIRE = ITEMS.register("test_salivaire", SalivaTestItem::new);
     public static final RegistryObject<Item> DETECTEUR_METAUX = ITEMS.register("detecteur_metaux", MetalDetectorItem::new);
@@ -33,7 +41,9 @@ public final class ModItems {
     public static final net.minecraft.world.item.CreativeModeTab.DisplayItemsGenerator TAB_ITEMS = (params, out) -> {
                 out.accept(TABLET.get());
                 out.accept(RADAR_MAIN.get());
-                out.accept(RADAR_FIXE.get());
+                out.accept(RADAR_MOBILE.get());
+                out.accept(RADAR_FIXE_POLICE.get());
+                out.accept(RADAR_HACK.get());
                 out.accept(HERSE.get());
                 out.accept(FOURRIERE.get());
                 out.accept(TASER.get());

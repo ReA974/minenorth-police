@@ -72,15 +72,40 @@ public final class HerseService {
         e.setCanceled(true);
         e.setCancellationResult(InteractionResult.SUCCESS);
         if (!(e.getEntity() instanceof ServerPlayer p) || !PoliceTool.allowed(p)) return;
+        place(p, e.getPos(), e.getFace(), e.getHitVec().getLocation());
+    }
+
+    /**
+     * Pose ou reprise demandée par le client (paquet dédié, voir {@code ModNetwork.HerseUsePacket}) : le clic vanilla est annulé côté client,
+     * donc WorldGuard (Arclight) ne voit aucune interaction. Revérifie objet en main, droit d'usage et distance.
+     */
+    public static void useFromPacket(ServerPlayer p, BlockPos pos, int face, Vec3 hit) {
+        boolean radar = p.getMainHandItem().getItem() instanceof fr.minenorth.police.item.RadarPlacerItem;
+        if ((!p.getMainHandItem().is(ModItems.HERSE.get()) && !radar) || !p.isAlive() || p.isSpectator()) return;
+        if (p.getEyePosition().distanceToSqr(hit) > 8 * 8 || !p.serverLevel().isLoaded(pos)) return;
+        if (!PoliceTool.allowed(p)) return;
+        Direction f = face >= 0 && face < Direction.values().length ? Direction.values()[face] : Direction.UP;
+        if (radar) fr.minenorth.police.item.RadarPlacerItem.place(p, pos, f);
+        else place(p, pos, f, hit);
+    }
+
+    private static void place(ServerPlayer p, BlockPos pos, Direction face, Vec3 hit) {
         ServerLevel level = p.serverLevel();
-        if (p.isShiftKeyDown()) { pickUpNearest(p, level, e.getHitVec().getLocation()); return; }
-        Vec3 at = e.getFace() == Direction.UP ? e.getHitVec().getLocation()
-                : Vec3.atBottomCenterOf(e.getPos().relative(e.getFace()));
+        if (p.isShiftKeyDown()) { pickUpNearest(p, level, hit); return; }
+        ItemStack st = p.getMainHandItem();
+        Vec3 at = face == Direction.UP ? hit : Vec3.atBottomCenterOf(pos.relative(face));
         HerseEntity h = new HerseEntity(ModEntities.HERSE.get(), level);
         h.moveTo(at.x, at.y, at.z, Math.round(p.getYRot() / 90f) * 90f, 0);
         level.addFreshEntity(h);
         if (!p.getAbilities().instabuild) st.shrink(1);
         level.playSound(null, BlockPos.containing(at), SoundEvents.CHAIN_PLACE, SoundSource.BLOCKS, 0.8f, 1.0f);
+    }
+
+    /** Reprise d'une herse par un clic sur elle (accroupi), demandée par le client. */
+    public static void pickUpFromPacket(ServerPlayer p, Vec3 hit) {
+        if (!p.getMainHandItem().is(ModItems.HERSE.get()) || !p.isShiftKeyDown() || !p.isAlive()) return;
+        if (p.getEyePosition().distanceToSqr(hit) > 8 * 8 || !PoliceTool.allowed(p)) return;
+        pickUpNearest(p, p.serverLevel(), hit);
     }
 
     /** Accroupi + clic droit directement sur une herse : la reprend. */

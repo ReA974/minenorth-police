@@ -64,6 +64,9 @@ public final class PoliceConfig {
     public int radar_fixe_delai_secondes = 30;
     /** Prévenir les policiers connectés à chaque flash. */
     public boolean radar_fixe_alerte_police = true;
+    /** Pirate de radar : durée de désactivation du radar (minutes) et temps de piratage (secondes, clic droit maintenu). */
+    public int radar_hack_minutes = 15;
+    public int radar_hack_secondes = 8;
     // ------------------------------------------------------------------ test salivaire
     /** Objets considérés comme drogues : consommés (mangés, bus, utilisés), ils rendent le test positif. Ex. "monmod:joint". */
     public List<String> drogue_objets = new ArrayList<>();

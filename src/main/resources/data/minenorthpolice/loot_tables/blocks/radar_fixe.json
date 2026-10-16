@@ -6,7 +6,7 @@
    "entries": [
     {
      "type": "minecraft:item",
-     "name": "minenorthpolice:radar_fixe"
+     "name": "minenorthpolice:radar_mobile"
     }
    ],
    "conditions": [

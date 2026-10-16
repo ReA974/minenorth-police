@@ -1,0 +1,11 @@
+{
+ "taser": {
+  "sounds": [
+   {
+    "name": "minenorthpolice:taser",
+    "stream": false
+   }
+  ],
+  "subtitle": "subtitles.minenorthpolice.taser"
+ }
+}

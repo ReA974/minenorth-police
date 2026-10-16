@@ -16,11 +16,14 @@ public final class ModBlocks {
 
     public static final RegistryObject<Block> RADAR_FIXE = BLOCKS.register("radar_fixe", RadarBlock::new);
 
+    /** Radar fixe : borne de 1 x 2 blocs (le trépied ci-dessus est le « radar mobile »). */
+    public static final RegistryObject<Block> RADAR_BORNE = BLOCKS.register("radar_borne", RadarBorneBlock::new);
+
     public static final RegistryObject<Block> HERSE = BLOCKS.register("herse", HerseBlock::new);
 
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<RadarBlockEntity>> RADAR_FIXE_BE = BLOCK_ENTITIES.register("radar_fixe",
-            () -> BlockEntityType.Builder.of(RadarBlockEntity::new, RADAR_FIXE.get()).build(null));
+            () -> BlockEntityType.Builder.of(RadarBlockEntity::new, RADAR_FIXE.get(), RADAR_BORNE.get()).build(null));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

@@ -369,6 +369,7 @@ public final class PoliceService {
             int dist = c.dim().equals(dim) ? (int) Math.sqrt(p.distanceToSqr(c.x() + 0.5, c.y(), c.z() + 0.5)) : -1;
             calls.add(new ModNetwork.CallView(c.id(), c.label(), c.caller(), c.dim(), c.x(), c.y(), c.z(), c.description(), c.ageSeconds(), dist));
         }
+        calls.addAll(fr.minenorth.police.RadarHack.views(p));
         ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_ALERTS, rank(p), msg, ok, "", 0, 1, pending(d),
                 List.of(), null, List.of(), List.of(), List.of(), List.of(), List.of(), duty(p, false), calls));
     }
@@ -377,6 +378,12 @@ public final class PoliceService {
     private static void guideCall(ServerPlayer p, String id) {
         long callId;
         try { callId = Long.parseLong(id.trim()); } catch (NumberFormatException e) { sendAlerts(p, "Appel inconnu.", false); return; }
+        fr.minenorth.police.RadarHack.Alert hack = fr.minenorth.police.RadarHack.find(callId);
+        if (hack != null) {
+            fr.minenorth.police.compat.MapBridge.set(p, hack.marker(), hack.dim(), hack.x(), hack.y(), hack.z(), 0xE53935, true);
+            sendAlerts(p, "Guidage activé vers le radar piraté" + (fr.minenorth.police.compat.MapBridge.available() ? "." : " (carte absente)."), true);
+            return;
+        }
         fr.minenorth.api.EmergencyCall call = fr.minenorth.api.MineNorth.calls().activeCalls(p.server, fr.minenorth.api.EmergencyCall.POLICE)
                 .stream().filter(c -> c.id() == callId).findFirst().orElse(null);
         if (call == null) { sendAlerts(p, "Cet appel n'est plus actif.", false); return; }

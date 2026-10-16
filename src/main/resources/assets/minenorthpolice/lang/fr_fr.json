@@ -1,7 +1,7 @@
 {
   "item.minenorthpolice.tablette_police": "Tablette de police",
   "item.minenorthpolice.radar_main": "Radar à main",
-  "block.minenorthpolice.radar_fixe": "Radar fixe",
+  "block.minenorthpolice.radar_fixe": "Radar mobile",
   "block.minenorthpolice.herse": "Herse (crève-pneus)",
   "entity.minenorthpolice.herse": "Herse (crève-pneus)",
   "item.minenorthpolice.herse_police": "Herse (crève-pneus)",
@@ -10,5 +10,10 @@
   "item.minenorthpolice.taser": "Taser",
   "item.minenorthpolice.cartouche_taser": "Cartouche de taser",
   "itemGroup.minenorthpolice": "Police MineNorth",
-  "item.minenorthpolice.ordre_fourriere": "Ordre de fourrière"
+  "item.minenorthpolice.ordre_fourriere": "Ordre de fourrière",
+  "subtitles.minenorthpolice.taser": "Taser",
+  "item.minenorthpolice.radar_mobile": "Radar mobile",
+  "block.minenorthpolice.radar_borne": "Radar fixe",
+  "item.minenorthpolice.radar_fixe_police": "Radar fixe",
+  "item.minenorthpolice.pirate_radar": "Pirate de radar"
 }

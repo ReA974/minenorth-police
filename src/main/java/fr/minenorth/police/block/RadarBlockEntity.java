@@ -28,6 +28,8 @@ public class RadarBlockEntity extends BlockEntity {
 
     private int limit = -1;
     private int flashes;
+    /** Radar piraté : désactivé jusqu'à ce tick de jeu (0 = actif). */
+    private long disabledUntil;
     /** Dernière position connue de chaque véhicule (mesure par déplacement). */
     private final Map<UUID, Vec3> lastPos = new HashMap<>();
     private final Map<UUID, Long> lastTick = new HashMap<>();
@@ -41,8 +43,16 @@ public class RadarBlockEntity extends BlockEntity {
 
     public void setLimit(int v) { limit = v; setChanged(); }
 
+    public boolean disabled(Level level) { return disabledUntil > level.getGameTime(); }
+    public int disabledMinutesLeft(Level level) { return (int) Math.max(1, (disabledUntil - level.getGameTime()) / 1200L + 1); }
+    public void disable(long untilGameTime) { disabledUntil = untilGameTime; lastPos.clear(); lastTick.clear(); cooldown.clear(); setChanged(); }
+
     public static void serverTick(Level level, BlockPos pos, BlockState state, RadarBlockEntity be) {
         if (!(level instanceof ServerLevel sl) || level.getGameTime() % SCAN_TICKS != 0) return;
+        if (be.disabled(level)) {
+            if (level.getGameTime() % 40 == 0) sl.sendParticles(ParticleTypes.SMOKE, pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5, 3, 0.15, 0.1, 0.15, 0.01);
+            return;
+        }
         be.scan(sl);
     }
 
@@ -107,6 +117,7 @@ public class RadarBlockEntity extends BlockEntity {
         super.saveAdditional(tag);
         tag.putInt("Limite", limit);
         tag.putInt("Flashs", flashes);
+        tag.putLong("Pirate", disabledUntil);
     }
 
     @Override
@@ -114,5 +125,6 @@ public class RadarBlockEntity extends BlockEntity {
         super.load(tag);
         limit = tag.contains("Limite") ? tag.getInt("Limite") : -1;
         flashes = tag.getInt("Flashs");
+        disabledUntil = tag.getLong("Pirate");
     }
 }

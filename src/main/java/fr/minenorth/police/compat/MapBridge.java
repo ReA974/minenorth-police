@@ -8,7 +8,7 @@ import java.lang.reflect.Method;
 /** Pont (par réflexion) vers l'API serveur du mod carte minenorth_map. Sans la carte, tous les appels sont sans effet. */
 public final class MapBridge {
     private static boolean tried;
-    private static Method set;
+    private static Method set, remove;
 
     private MapBridge() {}
 
@@ -19,6 +19,7 @@ public final class MapBridge {
                 if (ModList.get().isLoaded("minenorth_map")) {
                     Class<?> api = Class.forName("fr.minenorth.map.api.MapApi");
                     set = api.getMethod("setMarker", ServerPlayer.class, String.class, String.class, int.class, int.class, int.class, int.class, boolean.class);
+                    remove = api.getMethod("removeMarker", ServerPlayer.class, String.class);
                 }
             } catch (Throwable t) {
                 set = null;
@@ -33,5 +34,11 @@ public final class MapBridge {
     public static void set(ServerPlayer p, String name, String dim, int x, int y, int z, int color, boolean guide) {
         if (!init()) return;
         try { set.invoke(null, p, name, dim, x, y, z, color, guide); } catch (Throwable ignored) {}
+    }
+
+    /** Retire un repère de la carte du joueur. */
+    public static void remove(ServerPlayer p, String name) {
+        if (!init() || remove == null) return;
+        try { remove.invoke(null, p, name); } catch (Throwable ignored) {}
     }
 }

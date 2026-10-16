@@ -2,6 +2,7 @@ package fr.minenorth.police.network;
 
 import fr.minenorth.police.MineNorthPolice;
 import fr.minenorth.police.PoliceService;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -47,7 +48,7 @@ public final class ModNetwork {
             A_IMPOUND = 27;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "7";
+    private static final String PROTOCOL = "8";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -56,6 +57,11 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, ViewPacket.class, ViewPacket::encode, ViewPacket::decode, ViewPacket::handle);
         CHANNEL.registerMessage(id++, ActionPacket.class, ActionPacket::encode, ActionPacket::decode, ActionPacket::handle);
         CHANNEL.registerMessage(id++, TaserFirePacket.class, (p, b) -> {}, b -> new TaserFirePacket(), TaserFirePacket::handle);
+        CHANNEL.registerMessage(id++, RadarMeasurePacket.class, (p, b) -> {}, b -> new RadarMeasurePacket(), RadarMeasurePacket::handle);
+        CHANNEL.registerMessage(id++, RadarLimitPacket.class, RadarLimitPacket::encode, RadarLimitPacket::decode, RadarLimitPacket::handle);
+        CHANNEL.registerMessage(id++, RadarOpenPacket.class, RadarOpenPacket::encode, RadarOpenPacket::decode, RadarOpenPacket::handle);
+        CHANNEL.registerMessage(id++, RadarBlockPacket.class, RadarBlockPacket::encode, RadarBlockPacket::decode, RadarBlockPacket::handle);
+        CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle);
     }
 
     public static void send(ServerPlayer p, ViewPacket v) { CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), v); }
@@ -165,6 +171,58 @@ public final class ModNetwork {
     public record TaserFirePacket() {
         static void handle(TaserFirePacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.item.TaserItem.fire(sp); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : mesure du radar à main (clic gauche en visant à la jumelle). Tout est revérifié côté serveur. */
+    public record RadarMeasurePacket() {
+        static void handle(RadarMeasurePacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.item.HandRadarItem.measure(sp); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : limite choisie dans l'écran du radar à main. Le serveur revérifie l'objet en main et borne la valeur. */
+    public record RadarLimitPacket(int limit) {
+        static void encode(RadarLimitPacket p, FriendlyByteBuf b) { b.writeVarInt(p.limit); }
+        static RadarLimitPacket decode(FriendlyByteBuf b) { return new RadarLimitPacket(b.readVarInt()); }
+        static void handle(RadarLimitPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.item.HandRadarItem.setLimit(sp, p.limit); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Serveur -> client : ouvre l'écran de réglage d'un radar posé (mobile = trépied, sinon borne fixe). */
+    public record RadarOpenPacket(BlockPos pos, int limit, int flashes, boolean mobile) {
+        static void encode(RadarOpenPacket p, FriendlyByteBuf b) { b.writeBlockPos(p.pos); b.writeVarInt(p.limit); b.writeVarInt(p.flashes); b.writeBoolean(p.mobile); }
+        static RadarOpenPacket decode(FriendlyByteBuf b) { return new RadarOpenPacket(b.readBlockPos(), b.readVarInt(), b.readVarInt(), b.readBoolean()); }
+        static void handle(RadarOpenPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> fr.minenorth.police.client.RadarBlockScreen.open(p.pos, p.limit, p.flashes, p.mobile)));
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : limite choisie et/ou rangement du radar. Le serveur revérifie le droit, la distance et le bloc. */
+    public record RadarBlockPacket(BlockPos pos, int limit, boolean pickup) {
+        static void encode(RadarBlockPacket p, FriendlyByteBuf b) { b.writeBlockPos(p.pos); b.writeVarInt(p.limit); b.writeBoolean(p.pickup); }
+        static RadarBlockPacket decode(FriendlyByteBuf b) { return new RadarBlockPacket(b.readBlockPos(), b.readVarInt(), b.readBoolean()); }
+        static void handle(RadarBlockPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.block.RadarBlock.apply(sp, p.pos, p.limit, p.pickup); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /**
+     * Client -> serveur : clic droit avec la herse. Envoyé en paquet dédié (le clic vanilla est annulé côté client) : le serveur ne reçoit donc
+     * aucun évènement d'interaction que WorldGuard pourrait refuser. Le serveur revérifie l'objet en main, le droit, la distance.
+     */
+    public record HerseUsePacket(BlockPos pos, int face, double x, double y, double z) {
+        static void encode(HerseUsePacket p, FriendlyByteBuf b) { b.writeBlockPos(p.pos); b.writeVarInt(p.face); b.writeDouble(p.x); b.writeDouble(p.y); b.writeDouble(p.z); }
+        static HerseUsePacket decode(FriendlyByteBuf b) { return new HerseUsePacket(b.readBlockPos(), b.readVarInt(), b.readDouble(), b.readDouble(), b.readDouble()); }
+        static void handle(HerseUsePacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.HerseService.useFromPacket(sp, p.pos, p.face, new net.minecraft.world.phys.Vec3(p.x, p.y, p.z)); });
             c.get().setPacketHandled(true);
         }
     }

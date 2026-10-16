@@ -68,7 +68,19 @@ public class TaserItem extends Item {
     public int getUseDuration(ItemStack st) { return 72000; }
 
     @Override
-    public UseAnim getUseAnimation(ItemStack st) { return UseAnim.BOW; }
+    public UseAnim getUseAnimation(ItemStack st) { return UseAnim.NONE; }
+
+    /** Visée : bras tendu façon arme de poing en vue de tiers (pas d'animation d'arc), rien de changé en vue à la première personne. */
+    @Override
+    public void initializeClient(java.util.function.Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
+            @Override
+            public net.minecraft.client.model.HumanoidModel.ArmPose getArmPose(LivingEntity e, InteractionHand hand, ItemStack st) {
+                return e.isUsingItem() && e.getUsedItemHand() == hand ? net.minecraft.client.model.HumanoidModel.ArmPose.CROSSBOW_HOLD
+                        : net.minecraft.client.model.HumanoidModel.ArmPose.ITEM;
+            }
+        });
+    }
 
     /** Clic gauche = tir : on ne casse pas de bloc avec le taser. */
     @Override
@@ -101,7 +113,7 @@ public class TaserItem extends Item {
         }
         if (!creative) p.getInventory().getItem(slot).shrink(1);
         p.getCooldowns().addCooldown(item, cfg.taser_recharge_ticks);
-        level.playSound(null, p.blockPosition(), SoundEvents.CROSSBOW_SHOOT, SoundSource.PLAYERS, 0.9f, 1.8f);
+        level.playSound(null, p.blockPosition(), fr.minenorth.police.ModSounds.TASER.get(), SoundSource.PLAYERS, 1.0f, 1.0f);
 
         double cone = aiming(p) ? cfg.taser_precision_visee : cfg.taser_precision_hanche;
         Entity t = PoliceTool.target(p, cfg.taser_portee, cone, e -> e instanceof LivingEntity);
@@ -130,7 +142,6 @@ public class TaserItem extends Item {
         if (cfg.taser_degats > 0) target.hurt(p.damageSources().playerAttack(p), cfg.taser_degats);
         target.setSprinting(false);
         if (cfg.taser_descendre_vehicule && target.isPassenger()) target.stopRiding();
-        level.playSound(null, target.blockPosition(), SoundEvents.BEEHIVE_WORK, SoundSource.PLAYERS, 1.0f, 2.0f);
         String name = target instanceof ServerPlayer sp ? PoliceService.display(p.server, sp.getUUID()) : target.getName().getString();
         p.displayClientMessage(Component.literal("§eCible neutralisée : " + name + (left >= 0 ? " §8(" + left + " cartouche(s))" : "")), true);
         if (target instanceof ServerPlayer sp) sp.sendSystemMessage(Component.literal("§cVous avez été touché par un taser !"));

@@ -18,5 +18,6 @@ public class MineNorthPolice {
         ModBlocks.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModItems.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModEntities.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ModSounds.register(FMLJavaModLoadingContext.get().getModEventBus());
     }
 }

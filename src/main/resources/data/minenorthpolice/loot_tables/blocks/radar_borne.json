@@ -1,0 +1,26 @@
+{
+ "type": "minecraft:block",
+ "pools": [
+  {
+   "rolls": 1,
+   "entries": [
+    {
+     "type": "minecraft:item",
+     "name": "minenorthpolice:radar_fixe_police"
+    }
+   ],
+   "conditions": [
+    {
+     "condition": "minecraft:survives_explosion"
+    },
+    {
+     "condition": "minecraft:block_state_property",
+     "block": "minenorthpolice:radar_borne",
+     "properties": {
+      "half": "lower"
+     }
+    }
+   ]
+  }
+ ]
+}

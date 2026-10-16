@@ -14,13 +14,14 @@ import net.minecraft.world.entity.vehicle.Boat;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
 /**
- * Radar à main (jumelles laser) : clic droit en visant un véhicule = vitesse en km/h.
+ * Radar à main (jumelles laser) : clic droit maintenu = regarder dans les jumelles, clic gauche = vitesse en km/h du véhicule visé.
  * Clic droit accroupi = changer la limite affichée. Les véhicules MTS donnent la vitesse de leur compteur.
  */
 public class HandRadarItem extends Item {
@@ -31,22 +32,53 @@ public class HandRadarItem extends Item {
         return v > 0 ? v : 50;
     }
 
+    /**
+     * Clic droit maintenu = regarder dans les jumelles (zoom + viseur, côté client) ; clic gauche pendant ce temps = mesure
+     * ({@link #measure}, via un paquet). Accroupi + clic droit = changer la limite affichée.
+     */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack st = player.getItemInHand(hand);
-        if (level.isClientSide || !(player instanceof ServerPlayer p)) return InteractionResultHolder.success(st);
-        if (!PoliceTool.allowed(p)) return InteractionResultHolder.fail(st);
-        if (p.isShiftKeyDown()) {
-            int next = ToolService.nextLimit(limit(st));
-            st.getOrCreateTag().putInt("Limite", next);
-            p.displayClientMessage(Component.literal("§bLimite du radar : §f" + next + " km/h"), true);
+        if (hand != InteractionHand.MAIN_HAND) return InteractionResultHolder.pass(st);
+        if (player.isShiftKeyDown()) {
+            // Accroupi + clic droit : écran de réglage de la limite (le serveur revérifie à la validation).
+            if (level.isClientSide) {
+                int cur = limit(st);
+                net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                        () -> () -> fr.minenorth.police.client.RadarLimitScreen.open(cur));
+            }
             return InteractionResultHolder.success(st);
         }
+        if (!level.isClientSide && player instanceof ServerPlayer p && !PoliceTool.allowed(p)) return InteractionResultHolder.fail(st);
+        player.startUsingItem(hand);
+        return InteractionResultHolder.consume(st);
+    }
+
+    @Override public int getUseDuration(ItemStack st) { return 72000; }
+    @Override public UseAnim getUseAnimation(ItemStack st) { return UseAnim.SPYGLASS; }
+
+    /** Vrai tant que le joueur regarde dans le radar à main (zoom et viseur affichés par le client). */
+    public static boolean scoping(Player p) { return p.isUsingItem() && p.getUseItem().getItem() instanceof HandRadarItem; }
+
+    /** Applique la limite choisie dans l'écran (côté serveur) : objet en main, droit de police, valeur bornée. */
+    public static void setLimit(ServerPlayer p, int value) {
+        ItemStack st = p.getMainHandItem();
+        if (!(st.getItem() instanceof HandRadarItem) || !p.isAlive() || p.isSpectator() || !PoliceTool.allowed(p)) return;
+        int v = Math.max(5, Math.min(200, value));
+        st.getOrCreateTag().putInt("Limite", v);
+        p.displayClientMessage(Component.literal("§bLimite du radar : §f" + v + " km/h"), true);
+    }
+
+    /** Mesure du véhicule visé (côté serveur, appelée par le paquet du clic gauche en visée). */
+    public static void measure(ServerPlayer p) {
+        ItemStack st = p.getMainHandItem();
+        if (!(st.getItem() instanceof HandRadarItem item) || !p.isAlive() || p.isSpectator() || !scoping(p)) return;
+        if (p.getCooldowns().isOnCooldown(item) || !PoliceTool.allowed(p)) return;
         Entity target = PoliceTool.target(p, PoliceConfig.get().radar_portee, 2.5, HandRadarItem::measurable);
-        p.getCooldowns().addCooldown(this, 15);
+        p.getCooldowns().addCooldown(item, 15);
         if (target == null) {
             p.displayClientMessage(Component.literal("§7Aucun véhicule visé."), true);
-            return InteractionResultHolder.success(st);
+            return;
         }
         // Un joueur assis dans un véhicule MTS : on mesure le véhicule. Sur une monture / un bateau : la monture.
         if (Mts.isSeat(target.getVehicle()) || Mts.isSeat(target)) {
@@ -56,7 +88,6 @@ public class HandRadarItem extends Item {
             target = target.getRootVehicle();
         }
         ToolService.measure(p, target, limit(st));
-        return InteractionResultHolder.success(st);
     }
 
     private static boolean measurable(Entity e) {
@@ -78,6 +109,6 @@ public class HandRadarItem extends Item {
     @Override
     public void appendHoverText(ItemStack st, @Nullable Level level, List<Component> tip, TooltipFlag flag) {
         tip.add(Component.literal("§7Limite : §f" + limit(st) + " km/h"));
-        tip.add(Component.literal("§8Clic droit : mesurer · Accroupi : changer la limite"));
+        tip.add(Component.literal("§8Clic droit maintenu : viser · Clic gauche : mesurer · Accroupi : limite"));
     }
 }

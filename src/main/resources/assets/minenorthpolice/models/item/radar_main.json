@@ -1,1 +1,21 @@
-{"parent": "item/generated", "textures": {"layer0": "minenorthpolice:item/radar_main"}}
+{
+ "loader": "forge:separate_transforms",
+ "gui_light": "side",
+ "base": {
+  "parent": "minenorthpolice:item/radar_main_3d"
+ },
+ "perspectives": {
+  "fixed": {
+   "parent": "minecraft:item/generated",
+   "textures": {
+    "layer0": "minenorthpolice:item/radar_main"
+   }
+  },
+  "ground": {
+   "parent": "minecraft:item/generated",
+   "textures": {
+    "layer0": "minenorthpolice:item/radar_main"
+   }
+  }
+ }
+}
