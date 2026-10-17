@@ -82,7 +82,7 @@ public final class Tribunal {
         q.by = lawyer.getUUID(); q.byName = PoliceService.display(s, lawyer.getUUID()); q.rec = recId; q.time = System.currentTimeMillis();
         q.reason = (rec.type == PoliceData.AMENDE ? "Amende" : "Condamnation") + " : " + rec.text + " — Défense : " + text;
         d.requests.add(q);
-        while (d.requests.size() > 100) d.requests.remove(0);
+        PoliceService.trimRequests(d);
         d.setDirty();
         for (ServerPlayer o : s.getPlayerList().getPlayers()) {
             if (PoliceService.rank(o) == PoliceData.COMMISSAIRE) {

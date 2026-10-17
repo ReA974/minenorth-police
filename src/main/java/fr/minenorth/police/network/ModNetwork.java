@@ -56,16 +56,16 @@ public final class ModNetwork {
     private static int id = 0;
 
     public static void register() {
-        CHANNEL.registerMessage(id++, ViewPacket.class, ViewPacket::encode, ViewPacket::decode, ViewPacket::handle);
-        CHANNEL.registerMessage(id++, ActionPacket.class, ActionPacket::encode, ActionPacket::decode, ActionPacket::handle);
-        CHANNEL.registerMessage(id++, TaserFirePacket.class, (p, b) -> {}, b -> new TaserFirePacket(), TaserFirePacket::handle);
-        CHANNEL.registerMessage(id++, RadarMeasurePacket.class, (p, b) -> {}, b -> new RadarMeasurePacket(), RadarMeasurePacket::handle);
-        CHANNEL.registerMessage(id++, RadarLimitPacket.class, RadarLimitPacket::encode, RadarLimitPacket::decode, RadarLimitPacket::handle);
-        CHANNEL.registerMessage(id++, RadarOpenPacket.class, RadarOpenPacket::encode, RadarOpenPacket::decode, RadarOpenPacket::handle);
-        CHANNEL.registerMessage(id++, RadarBlockPacket.class, RadarBlockPacket::encode, RadarBlockPacket::decode, RadarBlockPacket::handle);
-        CHANNEL.registerMessage(id++, LawyerOpenPacket.class, LawyerOpenPacket::encode, LawyerOpenPacket::decode, LawyerOpenPacket::handle);
-        CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle);
-        CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle);
+        CHANNEL.registerMessage(id++, ViewPacket.class, ViewPacket::encode, ViewPacket::decode, ViewPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, ActionPacket.class, ActionPacket::encode, ActionPacket::decode, ActionPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, TaserFirePacket.class, (p, b) -> {}, b -> new TaserFirePacket(), TaserFirePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, RadarMeasurePacket.class, (p, b) -> {}, b -> new RadarMeasurePacket(), RadarMeasurePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, RadarLimitPacket.class, RadarLimitPacket::encode, RadarLimitPacket::decode, RadarLimitPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, RadarOpenPacket.class, RadarOpenPacket::encode, RadarOpenPacket::decode, RadarOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, RadarBlockPacket.class, RadarBlockPacket::encode, RadarBlockPacket::decode, RadarBlockPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, LawyerOpenPacket.class, LawyerOpenPacket::encode, LawyerOpenPacket::decode, LawyerOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
     }
 
     public static void send(ServerPlayer p, ViewPacket v) { CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), v); }

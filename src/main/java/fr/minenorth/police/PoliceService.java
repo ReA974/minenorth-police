@@ -499,6 +499,17 @@ public final class PoliceService {
         return (cents < 0 ? "-" : "") + (a / 100) + (a % 100 == 0 ? "" : "," + String.format("%02d", a % 100)) + " €";
     }
 
+    /** Garde 100 demandes au plus : on retire d'abord les plus anciennes déjà traitées, jamais une demande encore en attente tant qu'il en reste d'autres. */
+    public static void trimRequests(PoliceData d) {
+        while (d.requests.size() > 100) {
+            int idx = 0;
+            for (int i = 0; i < d.requests.size(); i++) {
+                if (d.requests.get(i).status != PoliceData.PENDING) { idx = i; break; }
+            }
+            d.requests.remove(idx);
+        }
+    }
+
     private static String clean(String v) { return v == null ? "" : v.trim().replaceAll("\\s+", " "); }
 
     private static Rec record(PoliceData d, UUID citizen, int type, ServerPlayer officer, String text) {
@@ -667,8 +678,10 @@ public final class PoliceService {
         boolean paid = tryPay(s, t, r);
         String pointsInfo = "";
         if (points > 0) {
+            int before = Compat.points(s, t);
             int left = Compat.removePoints(s, t, points);
-            pointsInfo = " • -" + points + " point(s)" + (left >= 0 ? " (reste " + left + ")" : "");
+            r.points = left >= 0 && before >= 0 ? Math.min(points, Math.max(0, before - left)) : 0;   // seulement ce qui a vraiment été retiré
+            pointsInfo = " • -" + r.points + " point(s)" + (left >= 0 ? " (reste " + left + ")" : "");
         }
         tell(s, t, "§cAmende de " + money(cents) + " : " + reason + pointsInfo + (paid ? " §7(prélevée sur votre compte)"
                 : " §7(impayée : elle sera prélevée dès que votre compte le permet)"));
@@ -718,7 +731,7 @@ public final class PoliceService {
         q.id = d.nextId(); q.type = type; q.target = t; q.targetName = display(p.server, t);
         q.by = p.getUUID(); q.byName = display(p.server, p.getUUID()); q.reason = reason; q.time = System.currentTimeMillis();
         d.requests.add(q);
-        while (d.requests.size() > 100) d.requests.remove(0);
+        trimRequests(d);
         d.setDirty();
         // Le Commissaire n'a pas à se valider lui-même.
         if (rank == PoliceData.COMMISSAIRE) return decide(p, rank, d, q.id, true);

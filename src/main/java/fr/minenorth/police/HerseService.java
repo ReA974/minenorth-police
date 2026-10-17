@@ -82,7 +82,10 @@ public final class HerseService {
     public static void useFromPacket(ServerPlayer p, BlockPos pos, int face, Vec3 hit) {
         boolean radar = p.getMainHandItem().getItem() instanceof fr.minenorth.police.item.RadarPlacerItem;
         if ((!p.getMainHandItem().is(ModItems.HERSE.get()) && !radar) || !p.isAlive() || p.isSpectator()) return;
-        if (p.getEyePosition().distanceToSqr(hit) > 8 * 8 || !p.serverLevel().isLoaded(pos)) return;
+        // Sécurité : valeurs envoyées par le client. Un NaN passerait « distance > 8 » ; le bloc cliqué doit lui aussi être à portée.
+        if (!Double.isFinite(hit.x) || !Double.isFinite(hit.y) || !Double.isFinite(hit.z)) return;
+        if (!(p.getEyePosition().distanceToSqr(hit) <= 8 * 8) || !(p.getEyePosition().distanceToSqr(Vec3.atCenterOf(pos)) <= 10 * 10)
+                || !p.serverLevel().isLoaded(pos)) return;
         if (!PoliceTool.allowed(p)) return;
         Direction f = face >= 0 && face < Direction.values().length ? Direction.values()[face] : Direction.UP;
         if (radar) fr.minenorth.police.item.RadarPlacerItem.place(p, pos, f);
@@ -130,6 +133,7 @@ public final class HerseService {
     }
 
     private static void give(ServerPlayer p, HerseEntity h) {
+        if (h.isRemoved()) return;   // deux demandes dans le même tick : une seule herse rendue
         h.discard();
         if (!p.getAbilities().instabuild) p.getInventory().add(new ItemStack(ModItems.HERSE.get()));
         p.serverLevel().playSound(null, h.blockPosition(), SoundEvents.CHAIN_BREAK, SoundSource.BLOCKS, 0.8f, 1.2f);
