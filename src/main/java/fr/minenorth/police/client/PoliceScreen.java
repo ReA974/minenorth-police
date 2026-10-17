@@ -17,13 +17,15 @@ import java.util.UUID;
 
 /** Tablette de police (charte MineNorth / Permis). Toutes les données viennent du serveur, qui revérifie chaque droit. */
 public class PoliceScreen extends Screen {
-    private static final int W = 420, H = 260, ROWS = 6;
+    private static final int W = 420, H = 272, ROWS = 6;
     private static final String[] GRADES = {"Commissaire", "Officier", "Sous-officier"};
     private static final String[] TYPES = {"AMENDE", "CONDAMNATION", "SAISIE", "NOTE", "PERMIS", "PERQUISITION", "GARDE À VUE"};
     private static final String[] JAIL = {"EN GARDE À VUE", "EN PRISON"};
 
     private ModNetwork.ViewPacket v;
     private int left, top;
+    /** Début du contenu sous la navigation : 90 en listes (2 rangées d'onglets), 72 dans un dossier. */
+    private int ct = 90;
     /** Onglet du dossier : 0 fiche, 1 casier, 2 permis/véhicules, 3 actions. */
     private int tab;
     /** Page locale (casier, inventaire, demandes, effectifs). */
@@ -111,10 +113,10 @@ public class PoliceScreen extends Screen {
 
     private void pager(int pages, int right, int y, Runnable prev, Runnable next, int current) {
         if (pages <= 1) return;
-        btn(right - 78, y, 20, 18, "<", MineNorthStyle.DARK, prev).enabled(current > 0);
+        btn(right - 82, y, 22, 20, "<", MineNorthStyle.DARK, prev).enabled(current > 0);
         String p = (current + 1) + " / " + pages;
-        label(p, right - 39 - font.width(p) / 2, y + 5, MineNorthStyle.TEXT);
-        btn(right - 20, y, 20, 18, ">", MineNorthStyle.DARK, next).enabled(current < pages - 1);
+        label(p, right - 41 - font.width(p) / 2, y + 6, MineNorthStyle.TEXT);
+        btn(right - 22, y, 22, 20, ">", MineNorthStyle.DARK, next).enabled(current < pages - 1);
     }
     /** Pagination locale d'une liste déjà reçue en entier. */
     private int localPages(int size) {
@@ -132,13 +134,14 @@ public class PoliceScreen extends Screen {
     @Override
     protected void init() {
         left = (width - W) / 2;
-        top = Math.max(4, (height - H) / 2);
+        top = Math.max(0, (height - H) / 2);
         labels.clear();
         cards.clear();
         faces.clear();
         bSearch = bReason = bAmount = bPoints = bName = bPlate = bImmat = bDuration = bMsg = null;
 
         boolean inDossier = v.view() == ModNetwork.V_DOSSIER || v.view() == ModNetwork.V_INVENTORY;
+        ct = inDossier ? 72 : 90;
         // En-tête : « Retour » (dossier) en haut à droite ; sinon « Fermer » sur la 2e ligne, sous le bouton de service.
         if (inDossier) btn(left + W - 100, top + 10, 86, 16, "Retour", MineNorthButton.GHOST, this::back);
         else btn(left + W - 100, top + 25, 86, 12, "Fermer", MineNorthButton.GHOST, this::back);
@@ -160,29 +163,24 @@ public class PoliceScreen extends Screen {
             btn(left + W - 14 - 126 - 4 - 150, top + 7, 150, 16, on ? "TÉLÉPHONE 17 : OUI" : "TÉLÉPHONE 17 : NON", on ? MineNorthStyle.GREEN : MineNorthStyle.DARK,
                     () -> { keep(); send(ModNetwork.A_PHONE, null, "", "", v.view(), 0); });
         }
-        // Navigation principale : les largeurs s'adaptent au nombre d'onglets (DISPATCH pour le plus haut gradé en service).
-        String req = v.pendingRequests() > 0 ? "DEMANDES (" + v.pendingRequests() + ")" : "DEMANDES";
-        List<Nav> nav = new ArrayList<>();
-        nav.add(new Nav("CITOYENS", v.view() == ModNetwork.V_LIST, () -> { keep(); send(ModNetwork.A_LIST, null, kSearch, "", 0, 0); }));
-        nav.add(new Nav(req, v.view() == ModNetwork.V_REQUESTS, () -> send(ModNetwork.A_REQUESTS, null, "", "", 0, 0)));
-        nav.add(new Nav(v.view() == ModNetwork.V_ALERTS && !v.calls().isEmpty() ? "ALERTES (" + v.calls().size() + ")" : "ALERTES",
+        // Navigation en deux rangées de grands onglets : l'essentiel en haut, les services en dessous.
+        String req = v.pendingRequests() > 0 ? "Demandes (" + v.pendingRequests() + ")" : "Demandes";
+        List<Nav> main = new ArrayList<>();
+        main.add(new Nav("Citoyens", v.view() == ModNetwork.V_LIST, () -> { keep(); send(ModNetwork.A_LIST, null, kSearch, "", 0, 0); }));
+        main.add(new Nav(req, v.view() == ModNetwork.V_REQUESTS, () -> send(ModNetwork.A_REQUESTS, null, "", "", 0, 0)));
+        main.add(new Nav(v.view() == ModNetwork.V_ALERTS && !v.calls().isEmpty() ? "Alertes (" + v.calls().size() + ")" : "Alertes",
                 v.view() == ModNetwork.V_ALERTS, () -> send(ModNetwork.A_ALERTS, null, "", "", 0, 0)));
-        nav.add(new Nav("RADARS", v.view() == ModNetwork.V_RADARS, () -> send(ModNetwork.A_RADARS, null, "", "", 0, 0)));
-        nav.add(new Nav("IMMAT.", v.view() == ModNetwork.V_PLATES,
+        main.add(new Nav("Radars", v.view() == ModNetwork.V_RADARS, () -> send(ModNetwork.A_RADARS, null, "", "", 0, 0)));
+        main.add(new Nav("Plaques", v.view() == ModNetwork.V_PLATES,
                 () -> { keep(); send(ModNetwork.A_PLATES, null, v.view() == ModNetwork.V_PLATES ? kImmat : "", "", 0, 0); }));
+        List<Nav> more = new ArrayList<>();
         // Ouvre le bureau du mod Accueil Police : plaintes, historique, rendez-vous, objets trouvés, fourrière.
-        nav.add(new Nav("BUREAU", false, () -> send(ModNetwork.A_DESK, null, "", "", 0, 0)));
-        nav.add(new Nav("FOURRIÈRE", false, () -> send(ModNetwork.A_IMPOUND, null, "", "", 0, 0)));
-        if (v.grade() == 0) nav.add(new Nav("EFFECTIFS", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
-        if (v.duty().dispatcher()) nav.add(new Nav("DISPATCH", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
-        int pad = 12, gap = 3;
-        while (pad > 2 && totalWidth(nav, pad, gap) > w) pad--;
-        int tx = x;
-        for (Nav n : nav) {
-            int bw = font.width(n.label()) + pad;
-            btn(tx, top + 46, bw, 18, n.label(), n.current() ? MineNorthStyle.CYAN : MineNorthStyle.DARK, n.run());
-            tx += bw + gap;
-        }
+        more.add(new Nav("Bureau", false, () -> send(ModNetwork.A_DESK, null, "", "", 0, 0)));
+        more.add(new Nav("Fourrière", false, () -> send(ModNetwork.A_IMPOUND, null, "", "", 0, 0)));
+        if (v.grade() == 0) more.add(new Nav("Effectifs", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
+        if (v.duty().dispatcher()) more.add(new Nav("Dispatch", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
+        navRow(main, x, top + 43, w);
+        navRow(more, x, top + 65, w);
         String g = "Grade : " + GRADES[Math.max(0, Math.min(2, v.grade()))];
         label(g, left + W - 14 - 46 - font.width(g), top + 27, MineNorthStyle.MUTED);
 
@@ -197,10 +195,13 @@ public class PoliceScreen extends Screen {
 
     private record Nav(String label, boolean current, Runnable run) {}
 
-    private int totalWidth(List<Nav> nav, int pad, int gap) {
-        int t = gap * (nav.size() - 1);
-        for (Nav n : nav) t += font.width(n.label()) + pad;
-        return t;
+    /** Une rangée d'onglets de même largeur, qui remplit toute la ligne. */
+    private void navRow(List<Nav> row, int x, int y, int w) {
+        int gap = 4, bw = (w - gap * (row.size() - 1)) / row.size();
+        for (int i = 0; i < row.size(); i++) {
+            Nav n = row.get(i);
+            btn(x + i * (bw + gap), y, bw, 20, n.label(), n.current() ? MineNorthStyle.CYAN : MineNorthStyle.DARK, n.run());
+        }
     }
 
     private void back() {
@@ -211,20 +212,20 @@ public class PoliceScreen extends Screen {
 
     // ---------- liste des citoyens
     private void buildList(int x, int w) {
-        int y0 = top + 72;
+        int y0 = top + ct;
         bSearch = box(x, y0, 220, "Nom ou prénom", kSearch, 32);
-        btn(x + 226, y0 - 1, 96, 20, "RECHERCHER", MineNorthStyle.CYAN, () -> send(ModNetwork.A_LIST, null, bSearch.getValue(), "", 0, 0));
+        btn(x + 226, y0 - 1, 96, 20, "Rechercher", MineNorthStyle.CYAN, () -> send(ModNetwork.A_LIST, null, bSearch.getValue(), "", 0, 0));
         if (v.citizens().isEmpty()) label("Aucun citoyen trouvé.", x, y0 + 32, MineNorthStyle.MUTED);
         for (int i = 0; i < v.citizens().size() && i < ROWS; i++) {
             ModNetwork.Citizen c = v.citizens().get(i);
             int y = y0 + 26 + i * 20;
-            card(x, y, w, 18, c.wanted() ? MineNorthStyle.ALERT : c.online() ? MineNorthStyle.OK : MineNorthStyle.DARK);
+            card(x, y, w, 19, c.wanted() ? MineNorthStyle.ALERT : c.online() ? MineNorthStyle.OK : MineNorthStyle.DARK);
             pseudos.put(c.id(), c.name());
             face(c.id(), c.name(), x + 6, y + 2, 14);
             label(displayName(c.rpName(), c.name()), x + 26, y + 5, MineNorthStyle.WHITE, 196);
             if (c.wanted()) label("RECHERCHÉ", x + 230, y + 5, MineNorthStyle.ALERT);
             else label(c.online() ? "en ligne" : "hors ligne", x + 230, y + 5, c.online() ? MineNorthStyle.OK : MineNorthStyle.MUTED);
-            btn(x + w - 64, y + 2, 62, 14, "DOSSIER", MineNorthStyle.DARK, () -> { keep(); send(ModNetwork.A_OPEN, c.id(), "", "", 0, 0); });
+            btn(x + w - 64, y + 1, 62, 17, "DOSSIER", MineNorthStyle.DARK, () -> { keep(); send(ModNetwork.A_OPEN, c.id(), "", "", 0, 0); });
         }
         pager(v.pages(), x + w, top + H - 38,
                 () -> { keep(); send(ModNetwork.A_LIST, null, kSearch, "", v.page() - 1, 0); },
@@ -233,15 +234,15 @@ public class PoliceScreen extends Screen {
 
     // ---------- dossier d'un citoyen
     private void buildDossier(Dossier d, int x, int w) {
-        String[] tabs = {"FICHE", "CASIER", "PERMIS / VÉHICULES", "ACTIONS", "TRANSPORT"};
-        int[] widths = {50, 56, 110, 62, 74};
+        String[] tabs = {"Fiche", "Casier", "Permis / véhicules", "Actions", "Transport"};
+        int[] widths = {54, 62, 124, 66, 76};
         int tx = x;
         for (int i = 0; i < tabs.length; i++) {
             final int t = i;
-            btn(tx, top + 46, widths[i], 18, tabs[i], tab == i ? MineNorthStyle.CYAN : MineNorthStyle.DARK, () -> go(() -> { tab = t; page = 0; }));
+            btn(tx, top + 44, widths[i], 22, tabs[i], tab == i ? MineNorthStyle.CYAN : MineNorthStyle.DARK, () -> go(() -> { tab = t; page = 0; }));
             tx += widths[i] + 4;
         }
-        int y0 = top + 72;
+        int y0 = top + ct;
         if (tab == 1) buildCasier(d, x, y0, w);
         else if (tab == 2) buildPermis(d, x, y0, w);
         else if (tab == 3) buildActions(d, x, y0, w);
@@ -314,7 +315,7 @@ public class PoliceScreen extends Screen {
             if (idx >= list.size()) break;
             RecView r = list.get(idx);
             int y = y0 + i * 20, color = typeColor(r.type());
-            card(x, y, w, 18, color);
+            card(x, y, w, 19, color);
             label(fmt.format(new Date(r.time())), x + 8, y + 5, MineNorthStyle.MUTED);
             label(TYPES[Math.max(0, Math.min(TYPES.length - 1, r.type()))], x + 56, y + 5, color, 76);
             String right = "";
@@ -327,7 +328,7 @@ public class PoliceScreen extends Screen {
             int end = x + w - (chief ? 26 : 6);
             label(right, end - rw, y + 5, rc, 110);
             label(r.text(), x + 136, y + 5, MineNorthStyle.TEXT, end - rw - 6 - (x + 136));
-            if (chief) btn(x + w - 20, y + 2, 18, 14, "X", MineNorthStyle.PINK, () -> send(ModNetwork.A_DELETE, d.id(), "", "", r.id(), 0));
+            if (chief) btn(x + w - 20, y + 1, 18, 17, "X", MineNorthStyle.PINK, () -> send(ModNetwork.A_DELETE, d.id(), "", "", r.id(), 0));
         }
         localPager(pages);
     }
@@ -418,10 +419,10 @@ public class PoliceScreen extends Screen {
             if (idx >= items.size()) break;
             ModNetwork.Inv it = items.get(idx);
             int y = y0 + i * 20;
-            card(x, y, w, 18, MineNorthStyle.PINK);
+            card(x, y, w, 19, MineNorthStyle.PINK);
             label(it.count() + "x", x + 8, y + 5, MineNorthStyle.MUTED);
             label(it.label(), x + 40, y + 5, MineNorthStyle.WHITE, w - 120);
-            btn(x + w - 62, y + 2, 60, 14, "SAISIR", MineNorthStyle.PINK, () -> send(ModNetwork.A_SEIZE, d.id(), "", "", it.slot(), 0));
+            btn(x + w - 62, y + 1, 60, 17, "SAISIR", MineNorthStyle.PINK, () -> send(ModNetwork.A_SEIZE, d.id(), "", "", it.slot(), 0));
         }
         localPager(pages);
     }
@@ -429,7 +430,7 @@ public class PoliceScreen extends Screen {
     // ---------- demandes
     private void buildRequests(int x, int w) {
         List<ModNetwork.ReqView> list = v.requests();
-        int y0 = top + 72, pages = localPages(list.size());
+        int y0 = top + ct, pages = localPages(list.size());
         boolean chief = v.grade() == 0;
         if (list.isEmpty()) label("Aucune demande.", x, y0 + 6, MineNorthStyle.MUTED);
         for (int i = 0; i < ROWS; i++) {
@@ -439,14 +440,14 @@ public class PoliceScreen extends Screen {
             int y = y0 + i * 20;
             boolean pending = r.status() == 0;
             int color = pending ? MineNorthStyle.WARN : r.status() == 1 ? MineNorthStyle.OK : MineNorthStyle.ALERT;
-            card(x, y, w, 18, color);
+            card(x, y, w, 19, color);
             label(r.type() == 0 ? "PERQUIS." : r.type() == 2 ? "CONTEST." : "PERMIS", x + 8, y + 5, MineNorthStyle.CYAN);
             label(r.target(), x + 60, y + 5, MineNorthStyle.WHITE, 78);
             label("par " + r.by(), x + 142, y + 5, MineNorthStyle.MUTED, 76);
             if (pending && chief) {
                 label(r.reason(), x + 222, y + 5, MineNorthStyle.TEXT, w - 222 - 100);
-                btn(x + w - 96, y + 2, 46, 14, "OUI", MineNorthStyle.GREEN, () -> send(ModNetwork.A_DECIDE, null, "", "", r.id(), 1));
-                btn(x + w - 48, y + 2, 46, 14, "NON", MineNorthStyle.PINK, () -> send(ModNetwork.A_DECIDE, null, "", "", r.id(), 0));
+                btn(x + w - 96, y + 1, 46, 17, "OUI", MineNorthStyle.GREEN, () -> send(ModNetwork.A_DECIDE, null, "", "", r.id(), 1));
+                btn(x + w - 48, y + 1, 46, 17, "NON", MineNorthStyle.PINK, () -> send(ModNetwork.A_DECIDE, null, "", "", r.id(), 0));
             } else {
                 String status = pending ? "EN ATTENTE" : r.status() == 1 ? "ACCEPTÉE" : "REFUSÉE";
                 label(r.reason(), x + 222, y + 5, MineNorthStyle.TEXT, w - 222 - 12 - font.width(status));
@@ -459,7 +460,7 @@ public class PoliceScreen extends Screen {
     // ---------- radars fixes : flashs (plaque, modèle, vitesse, lieu)
     /** Appels d'urgence « police » du téléphone : plus anciens d'abord ; GUIDER pose le point sur la carte. */
     private void buildAlerts(int x, int w) {
-        int y0 = top + 72, rows = 4;
+        int y0 = top + ct, rows = 4;
         List<ModNetwork.CallView> list = v.calls();
         int pages = Math.max(1, (list.size() + rows - 1) / rows);
         page = Math.max(0, Math.min(pages - 1, page));
@@ -485,7 +486,7 @@ public class PoliceScreen extends Screen {
     }
 
     private void buildRadars(int x, int w) {
-        int y0 = top + 72, rows = 4;
+        int y0 = top + ct, rows = 4;
         bPlate = box(x, y0, 150, "Filtrer : plaque ou modèle", kPlate, 24);
         btn(x + 156, y0 - 1, 80, 20, "FILTRER", MineNorthStyle.CYAN, () -> go(() -> page = 0));
         String q = kPlate.trim().toLowerCase(java.util.Locale.ROOT);
@@ -525,7 +526,7 @@ public class PoliceScreen extends Screen {
 
     // ---------- fichier des immatriculations (achats chez le vendeur de véhicules)
     private void buildPlates(int x, int w) {
-        int y0 = top + 72, rows = 4;
+        int y0 = top + ct, rows = 4;
         bImmat = box(x, y0, 190, "Plaque, nom, prénom ou modèle", kImmat, 32);
         btn(x + 196, y0 - 1, 96, 20, "RECHERCHER", MineNorthStyle.CYAN, () -> { keep(); send(ModNetwork.A_PLATES, null, kImmat, "", 0, 0); });
         List<ModNetwork.PlateView> list = v.plates();
@@ -559,7 +560,7 @@ public class PoliceScreen extends Screen {
 
     // ---------- dispatch : policiers en service (plus haut gradé en service uniquement)
     private void buildDispatch(int x, int w) {
-        int y0 = top + 72, rows = 4;
+        int y0 = top + ct, rows = 4;
         List<ModNetwork.DutyView> list = v.duty().duty();
         if (dispatchTarget != null && list.stream().noneMatch(o -> o.id().equals(dispatchTarget))) dispatchTarget = null;
         label(v.duty().onDutyCount() + " policier(s) en service", x, y0 + 5, MineNorthStyle.MUTED);
@@ -595,7 +596,7 @@ public class PoliceScreen extends Screen {
     // ---------- effectifs (Commissaire)
     private void buildRoster(int x, int w) {
         List<ModNetwork.Officer> list = v.officers();
-        int y0 = top + 72;
+        int y0 = top + ct;
         // Une ligne de moins que les autres listes : le bas du panneau sert au recrutement.
         int rosterPages = Math.max(1, (list.size() + ROWS - 2) / (ROWS - 1));
         page = Math.max(0, Math.min(rosterPages - 1, page));
@@ -607,14 +608,14 @@ public class PoliceScreen extends Screen {
             if (idx >= list.size()) break;
             ModNetwork.Officer o = list.get(idx);
             int y = y0 + i * 20;
-            card(x, y, w, 18, o.grade() == 0 ? MineNorthStyle.WARN : o.online() ? MineNorthStyle.OK : MineNorthStyle.DARK);
+            card(x, y, w, 19, o.grade() == 0 ? MineNorthStyle.WARN : o.online() ? MineNorthStyle.OK : MineNorthStyle.DARK);
             label(o.name(), x + 8, y + 5, o.online() ? MineNorthStyle.WHITE : MineNorthStyle.MUTED, 150);
             label(GRADES[Math.max(0, Math.min(2, o.grade()))], x + 170, y + 5, MineNorthStyle.TEXT);
             if (!o.id().equals(self)) {
                 // "+" = monter en grade, "-" = descendre, "X" = renvoyer de la police.
-                btn(x + w - 62, y + 2, 16, 14, "+", MineNorthStyle.DARK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", o.grade() - 1, 0)).enabled(o.grade() > 0);
-                btn(x + w - 44, y + 2, 16, 14, "-", MineNorthStyle.DARK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", o.grade() + 1, 0)).enabled(o.grade() < 2);
-                btn(x + w - 22, y + 2, 20, 14, "X", MineNorthStyle.PINK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", -1, 0));
+                btn(x + w - 62, y + 1, 16, 17, "+", MineNorthStyle.DARK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", o.grade() - 1, 0)).enabled(o.grade() > 0);
+                btn(x + w - 44, y + 1, 16, 17, "-", MineNorthStyle.DARK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", o.grade() + 1, 0)).enabled(o.grade() < 2);
+                btn(x + w - 22, y + 1, 20, 17, "X", MineNorthStyle.PINK, () -> send(ModNetwork.A_GRADE, o.id(), "", "", -1, 0));
             }
         }
         int yb = top + H - 38;
@@ -636,7 +637,7 @@ public class PoliceScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
-        MineNorthStyle.panel(g, left, top, W, H, heading(), "MINENORTH RP • FICHIER DES CITOYENS");
+        MineNorthStyle.panel(g, left, top, W, H, heading(), "MINENORTH RP • TABLETTE DE POLICE");
         for (Card c : cards) MineNorthStyle.card(g, c.x(), c.y(), c.w(), c.h(), false, c.accent());
         for (Label l : labels) g.drawString(font, l.text(), l.x(), l.y(), l.color(), false);
         for (Face f : faces) Faces.draw(g, f.id(), f.pseudo(), f.x(), f.y(), f.size());
