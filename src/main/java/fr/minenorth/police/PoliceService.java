@@ -351,7 +351,7 @@ public final class PoliceService {
         }
         int count = 0;
         for (UUID id : DUTY.keySet()) if (s.getPlayerList().getPlayer(id) != null) count++;
-        return new ModNetwork.Duty(DUTY.containsKey(p.getUUID()), me, disp == null ? "" : display(s, disp), count, list);
+        return new ModNetwork.Duty(DUTY.containsKey(p.getUUID()), me, disp == null ? "" : display(s, disp), count, list, Compat.phoneState(p));
     }
 
     private static void sendDispatch(ServerPlayer p, String msg, boolean ok) {
@@ -615,6 +615,7 @@ public final class PoliceService {
             case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
             case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DUTY -> { setDuty(s, p.getUUID(), !onDuty(p.getUUID())); reopen(p, k.n(), rank); }
+            case ModNetwork.A_PHONE -> { Compat.setPhone(p, Compat.phoneState(p) != 2); reopen(p, k.n(), rank); }
             case ModNetwork.A_DISPATCH -> {
                 if (isDispatcher(p)) sendDispatch(p, "", true);
                 else sendList(p, "L'onglet DISPATCH est réservé au plus haut gradé en service.", false);

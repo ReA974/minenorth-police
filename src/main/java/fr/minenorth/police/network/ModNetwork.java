@@ -45,7 +45,9 @@ public final class ModNetwork {
             /** Guidage sur la carte vers un appel d'urgence : a = id de l'appel. */
             A_CALL_GUIDE = 26,
             /** Mise en fourrière du véhicule visé depuis la tablette. */
-            A_IMPOUND = 27;
+            A_IMPOUND = 27,
+            /** Bascule « répondre aux appels du 17 sur mon téléphone » (n = vue actuelle, pour la réafficher). */
+            A_PHONE = 28;
     public static final UUID NONE = new UUID(0, 0);
 
     private static final String PROTOCOL = "8";
@@ -158,14 +160,14 @@ public final class ModNetwork {
     }
 
     /** État de service : onDuty = ce policier a pris son poste ; dispatcher = il est le plus haut gradé en service ; duty = liste (dispatcher seulement). */
-    public record Duty(boolean onDuty, boolean dispatcher, String dispatcherName, int onDutyCount, List<DutyView> duty) {
-        static final Duty NONE_DUTY = new Duty(false, false, "", 0, List.of());
+    public record Duty(boolean onDuty, boolean dispatcher, String dispatcherName, int onDutyCount, List<DutyView> duty, int phone) {
+        static final Duty NONE_DUTY = new Duty(false, false, "", 0, List.of(), 0);
         static void encode(FriendlyByteBuf b, Duty d) {
             b.writeBoolean(d.onDuty); b.writeBoolean(d.dispatcher); b.writeUtf(d.dispatcherName); b.writeVarInt(d.onDutyCount);
-            b.writeCollection(d.duty, DutyView::encode);
+            b.writeCollection(d.duty, DutyView::encode); b.writeVarInt(d.phone);
         }
         static Duty decode(FriendlyByteBuf b) {
-            return new Duty(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readVarInt(), b.readList(DutyView::decode));
+            return new Duty(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readVarInt(), b.readList(DutyView::decode), b.readVarInt());
         }
     }
 

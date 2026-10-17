@@ -154,6 +154,12 @@ public class PoliceScreen extends Screen {
         // Bouton de service : colonne de droite de l'en-tête (au-delà du titre et du sous-titre), aligné sur le bord droit.
         btn(left + W - 14 - 126, top + 7, 126, 16, duty ? "FIN DE SERVICE" : "PRISE DE SERVICE", duty ? RED : MineNorthStyle.GREEN,
                 () -> { keep(); send(ModNetwork.A_DUTY, null, "", "", v.view(), 0); });
+        // Réponse aux appels du 17 sur le téléphone personnel (pont téléphone) : bouton à gauche de celui du service.
+        if (duty && v.duty().phone() > 0) {
+            boolean on = v.duty().phone() == 2;
+            btn(left + W - 14 - 126 - 4 - 150, top + 7, 150, 16, on ? "TÉLÉPHONE 17 : OUI" : "TÉLÉPHONE 17 : NON", on ? MineNorthStyle.GREEN : MineNorthStyle.DARK,
+                    () -> { keep(); send(ModNetwork.A_PHONE, null, "", "", v.view(), 0); });
+        }
         // Navigation principale : les largeurs s'adaptent au nombre d'onglets (DISPATCH pour le plus haut gradé en service).
         String req = v.pendingRequests() > 0 ? "DEMANDES (" + v.pendingRequests() + ")" : "DEMANDES";
         List<Nav> nav = new ArrayList<>();

@@ -18,6 +18,25 @@ import java.util.UUID;
 public final class Compat {
     private Compat() {}
 
+    /** État du bouton « répondre sur mon téléphone » (pont MineNorth Téléphone, par réflexion) : 0 indisponible, 1 non, 2 oui. */
+    public static int phoneState(net.minecraft.server.level.ServerPlayer p) {
+        if (!ModList.get().isLoaded("minenorthphone")) return 0;
+        try {
+            return (Integer) Class.forName("fr.minenorth.phone.CallRouter").getMethod("state", net.minecraft.server.level.ServerPlayer.class, boolean.class).invoke(null, p, true);
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /** Active / coupe la réponse aux appels du 17 sur le téléphone du policier. */
+    public static void setPhone(net.minecraft.server.level.ServerPlayer p, boolean on) {
+        if (!ModList.get().isLoaded("minenorthphone")) return;
+        try {
+            Class.forName("fr.minenorth.phone.CallRouter").getMethod("setOpted", net.minecraft.server.level.ServerPlayer.class, boolean.class, boolean.class).invoke(null, p, on, true);
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static boolean hasAccueil() { return ModList.get().isLoaded("minenorthaccueil"); }
 
     /**
