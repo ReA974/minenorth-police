@@ -61,6 +61,8 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, RadarLimitPacket.class, RadarLimitPacket::encode, RadarLimitPacket::decode, RadarLimitPacket::handle);
         CHANNEL.registerMessage(id++, RadarOpenPacket.class, RadarOpenPacket::encode, RadarOpenPacket::decode, RadarOpenPacket::handle);
         CHANNEL.registerMessage(id++, RadarBlockPacket.class, RadarBlockPacket::encode, RadarBlockPacket::decode, RadarBlockPacket::handle);
+        CHANNEL.registerMessage(id++, LawyerOpenPacket.class, LawyerOpenPacket::encode, LawyerOpenPacket::decode, LawyerOpenPacket::handle);
+        CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle);
         CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle);
     }
 
@@ -210,6 +212,36 @@ public final class ModNetwork {
         static RadarBlockPacket decode(FriendlyByteBuf b) { return new RadarBlockPacket(b.readBlockPos(), b.readVarInt(), b.readBoolean()); }
         static void handle(RadarBlockPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.block.RadarBlock.apply(sp, p.pos, p.limit, p.pickup); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Entrée contestable du casier, envoyée à l'écran de la mallette d'avocat. */
+    public record LawRec(int id, int type, long time, String text, long amount, boolean paid) {
+        static void encode(FriendlyByteBuf b, LawRec r) { b.writeVarInt(r.id); b.writeVarInt(r.type); b.writeLong(r.time); b.writeUtf(r.text, 200); b.writeLong(r.amount); b.writeBoolean(r.paid); }
+        static LawRec decode(FriendlyByteBuf b) { return new LawRec(b.readVarInt(), b.readVarInt(), b.readLong(), b.readUtf(200), b.readLong(), b.readBoolean()); }
+    }
+
+    /** Serveur -> client : ouvre la mallette d'avocat sur ce client. */
+    public record LawyerOpenPacket(UUID client, String name, List<LawRec> recs) {
+        static void encode(LawyerOpenPacket p, FriendlyByteBuf b) { b.writeUUID(p.client); b.writeUtf(p.name, 64); b.writeCollection(p.recs, LawRec::encode); }
+        static LawyerOpenPacket decode(FriendlyByteBuf b) { return new LawyerOpenPacket(b.readUUID(), b.readUtf(64), b.readList(LawRec::decode)); }
+        static void handle(LawyerOpenPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                    () -> () -> fr.minenorth.police.client.LawyerScreen.open(p.client, p.name, p.recs)));
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : contestation déposée. Le serveur revérifie avocat, distance, entrée et texte. */
+    public record LawyerSubmitPacket(UUID client, int rec, String text) {
+        static void encode(LawyerSubmitPacket p, FriendlyByteBuf b) { b.writeUUID(p.client); b.writeVarInt(p.rec); b.writeUtf(p.text, 160); }
+        static LawyerSubmitPacket decode(FriendlyByteBuf b) { return new LawyerSubmitPacket(b.readUUID(), b.readVarInt(), b.readUtf(160)); }
+        static void handle(LawyerSubmitPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> {
+                ServerPlayer sp = c.get().getSender();
+                if (sp != null) sp.displayClientMessage(net.minecraft.network.chat.Component.literal(fr.minenorth.police.Tribunal.submit(sp, p.client, p.rec, p.text)), true);
+            });
             c.get().setPacketHandled(true);
         }
     }

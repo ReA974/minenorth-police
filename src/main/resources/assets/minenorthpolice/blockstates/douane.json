@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "minenorthpolice:block/douane"
+  },
+  "facing=east": {
+   "model": "minenorthpolice:block/douane",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "minenorthpolice:block/douane",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "minenorthpolice:block/douane",
+   "y": 270
+  }
+ }
+}

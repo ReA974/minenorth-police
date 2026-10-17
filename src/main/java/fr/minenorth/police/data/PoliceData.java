@@ -25,7 +25,7 @@ public class PoliceData extends SavedData {
     public static final int JAIL_GAV = 0, JAIL_PRISON = 1;
     public static final String[] JAIL_TYPES = {"Garde à vue", "Prison"};
     /** Types de demande. */
-    public static final int REQ_PERQUISITION = 0, REQ_PERMIS = 1;
+    public static final int REQ_PERQUISITION = 0, REQ_PERMIS = 1, REQ_CONTESTATION = 2;
     public static final int PENDING = 0, ACCEPTED = 1, REFUSED = 2;
 
     public static final class Rec {
@@ -34,6 +34,8 @@ public class PoliceData extends SavedData {
     public static final class Req {
         public int id, type, status; public UUID target, by; public String targetName = "", byName = "", reason = "", decidedBy = "";
         public long time, expires;
+        /** Contestation : identifiant de l'entrée du casier contestée. */
+        public int rec;
     }
 
     /** Flash d'un radar fixe (driver / driverName / fine : champs d'anciennes versions, plus utilisés). */
@@ -140,7 +142,7 @@ public class PoliceData extends SavedData {
             r.id = t.getInt("id"); r.type = t.getInt("type"); r.status = t.getInt("status");
             r.target = t.getUUID("target"); r.by = t.getUUID("by");
             r.targetName = t.getString("targetName"); r.byName = t.getString("byName"); r.reason = t.getString("reason");
-            r.decidedBy = t.getString("decidedBy"); r.time = t.getLong("time"); r.expires = t.getLong("expires");
+            r.decidedBy = t.getString("decidedBy"); r.time = t.getLong("time"); r.expires = t.getLong("expires"); r.rec = t.getInt("rec");
             d.requests.add(r);
         }
         ListTag fl = tag.getList("flashes", Tag.TAG_COMPOUND);
@@ -194,7 +196,7 @@ public class PoliceData extends SavedData {
             CompoundTag t = new CompoundTag();
             t.putInt("id", r.id); t.putInt("type", r.type); t.putInt("status", r.status); t.putUUID("target", r.target); t.putUUID("by", r.by);
             t.putString("targetName", r.targetName); t.putString("byName", r.byName); t.putString("reason", r.reason);
-            t.putString("decidedBy", r.decidedBy); t.putLong("time", r.time); t.putLong("expires", r.expires);
+            t.putString("decidedBy", r.decidedBy); t.putLong("time", r.time); t.putLong("expires", r.expires); t.putInt("rec", r.rec);
             ql.add(t);
         }
         tag.put("requests", ql);

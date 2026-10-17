@@ -15,5 +15,8 @@
   "item.minenorthpolice.radar_mobile": "Radar mobile",
   "block.minenorthpolice.radar_borne": "Radar fixe",
   "item.minenorthpolice.radar_fixe_police": "Radar fixe",
-  "item.minenorthpolice.pirate_radar": "Pirate de radar"
+  "item.minenorthpolice.pirate_radar": "Pirate de radar",
+  "item.minenorthpolice.mallette_avocat": "Mallette d'avocat",
+  "block.minenorthpolice.douane": "Poste de douane",
+  "item.minenorthpolice.poste_douane": "Poste de douane"
 }

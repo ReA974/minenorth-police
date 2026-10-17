@@ -29,6 +29,11 @@ public final class ModItems {
             () -> new RadarPlacerItem(ModBlocks.RADAR_BORNE, new Item.Properties().stacksTo(16)));
     /** Objet illégal : désactive un radar posé pendant la durée de la config et alerte la police (tablette, carte, chat). */
     public static final RegistryObject<Item> RADAR_HACK = ITEMS.register("pirate_radar", RadarHackItem::new);
+    /** Mallette d'avocat : contestation d'amendes / condamnations (réservée aux membres de l'entreprise d'avocats de la config). */
+    public static final RegistryObject<Item> MALLETTE_AVOCAT = ITEMS.register("mallette_avocat", LawyerCaseItem::new);
+    /** Poste de douane (borne de contrôle), posé par les admins. */
+    public static final RegistryObject<Item> POSTE_DOUANE = ITEMS.register("poste_douane",
+            () -> new RadarPlacerItem(ModBlocks.DOUANE, new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> HERSE = ITEMS.register("herse_police", () -> new HerseItem(new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> TEST_SALIVAIRE = ITEMS.register("test_salivaire", SalivaTestItem::new);
     public static final RegistryObject<Item> DETECTEUR_METAUX = ITEMS.register("detecteur_metaux", MetalDetectorItem::new);
@@ -44,6 +49,8 @@ public final class ModItems {
                 out.accept(RADAR_MOBILE.get());
                 out.accept(RADAR_FIXE_POLICE.get());
                 out.accept(RADAR_HACK.get());
+                out.accept(MALLETTE_AVOCAT.get());
+                out.accept(POSTE_DOUANE.get());
                 out.accept(HERSE.get());
                 out.accept(FOURRIERE.get());
                 out.accept(TASER.get());

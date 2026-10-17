@@ -22,6 +22,19 @@ public final class PoliceConfig {
     public int points_max_par_amende = 6;
     /** Distance maximum (en blocs) entre le policier et le citoyen pour saisir ses objets. */
     public int distance_saisie = 6;
+    /** Nom de l'entreprise (mod Entreprises) qui fait office de cabinet d'avocats : ses membres peuvent contester amendes et condamnations. Vide = contestation impossible. */
+    public String avocat_entreprise = "";
+    /** Age maximal (jours) d'une amende ou condamnation contestable ; 0 = sans limite. */
+    public int contestation_jours = 7;
+    /** Poste de douane : objets de contrebande (id complet, ex. minenorthdrogue:meth), rayon de détection (blocs), délai avant de re-signaler le même joueur,
+     *  durée de l'alerte police (minutes), et si les policiers passent sans déclencher. */
+    public List<String> douane_objets = new ArrayList<>(List.of("minenorthdrogue:joint", "minenorthdrogue:cocaine", "minenorthdrogue:meth",
+            "minenorthdrogue:cannabis_leaf", "minenorthdrogue:coca_leaf", "minenorthdrogue:ephedra", "minenorthdrogue:coca_paste",
+            "minenorthdrogue:cocaine_powder", "minenorthdrogue:meth_crystals"));
+    public double douane_rayon = 2.5;
+    public int douane_delai_secondes = 60;
+    public int douane_alerte_minutes = 10;
+    public boolean douane_ignorer_police = true;
     /** Tag donné aux policiers (utilisé par le mod Véhicules pour la mise en fourrière). Vide = aucun tag. */
     public String tag_police = "police.check";
 
@@ -133,6 +146,12 @@ public final class PoliceConfig {
         c.duree_perquisition_minutes = Math.max(1, c.duree_perquisition_minutes);
         c.points_max_par_amende = Math.max(0, c.points_max_par_amende);
         c.distance_saisie = Math.max(1, c.distance_saisie);
+        if (c.avocat_entreprise == null) c.avocat_entreprise = "";
+        c.contestation_jours = Math.max(0, c.contestation_jours);
+        if (c.douane_objets == null) c.douane_objets = new ArrayList<>();
+        c.douane_rayon = Math.max(1, Math.min(8, c.douane_rayon));
+        c.douane_delai_secondes = Math.max(5, c.douane_delai_secondes);
+        c.douane_alerte_minutes = Math.max(1, c.douane_alerte_minutes);
         if (c.tag_police == null) c.tag_police = "";
         if (c.kit_equipement == null) c.kit_equipement = def.kit_equipement;
         c.garde_a_vue_max_minutes = Math.max(1, c.garde_a_vue_max_minutes);

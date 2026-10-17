@@ -21,9 +21,16 @@ public final class ModBlocks {
 
     public static final RegistryObject<Block> HERSE = BLOCKS.register("herse", HerseBlock::new);
 
+    /** Poste de douane : borne de contrôle (voir {@link DouaneBlock}). */
+    public static final RegistryObject<Block> DOUANE = BLOCKS.register("douane", DouaneBlock::new);
+
     @SuppressWarnings("DataFlowIssue")
     public static final RegistryObject<BlockEntityType<RadarBlockEntity>> RADAR_FIXE_BE = BLOCK_ENTITIES.register("radar_fixe",
             () -> BlockEntityType.Builder.of(RadarBlockEntity::new, RADAR_FIXE.get(), RADAR_BORNE.get()).build(null));
+
+    @SuppressWarnings("DataFlowIssue")
+    public static final RegistryObject<BlockEntityType<DouaneBlockEntity>> DOUANE_BE = BLOCK_ENTITIES.register("douane",
+            () -> BlockEntityType.Builder.of(DouaneBlockEntity::new, DOUANE.get()).build(null));
 
     public static void register(IEventBus modBus) {
         BLOCKS.register(modBus);

@@ -33,9 +33,9 @@ public class RadarPlacerItem extends Item {
         ItemStack st = p.getMainHandItem();
         if (!(st.getItem() instanceof RadarPlacerItem item)) return;
         // Borne fixe : posée par les admins ; radar mobile : par les policiers.
-        if (item.block.get() instanceof fr.minenorth.police.block.RadarBorneBlock) {
+        if (item.block.get() instanceof fr.minenorth.police.block.RadarBorneBlock || item.block.get() instanceof fr.minenorth.police.block.DouaneBlock) {
             if (!(p.hasPermissions(2) || p.getAbilities().instabuild)) {
-                p.displayClientMessage(Component.literal("§cLa borne fixe est posée par les administrateurs."), true);
+                p.displayClientMessage(Component.literal("§cCette borne est posée par les administrateurs."), true);
                 return;
             }
         } else if (!PoliceTool.allowed(p)) return;

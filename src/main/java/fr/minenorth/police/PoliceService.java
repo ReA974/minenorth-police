@@ -735,6 +735,13 @@ public final class PoliceService {
         for (Req r : d.requests) if (r.id == id) q = r;
         if (q == null || q.status != PoliceData.PENDING) return R.err("Cette demande a déjà été traitée.");
         MinecraftServer s = p.server;
+        if (q.type == PoliceData.REQ_CONTESTATION) {
+            q.decidedBy = display(s, p.getUUID());
+            q.status = accept ? PoliceData.ACCEPTED : PoliceData.REFUSED;
+            String msg = Tribunal.decide(s, d, q, accept);
+            d.setDirty();
+            return R.ok(msg);
+        }
         boolean search = q.type == PoliceData.REQ_PERQUISITION;
         if (accept && search && s.getPlayerList().getPlayer(q.target) == null) {
             return R.err("Perquisition impossible : " + q.targetName + " n'est pas connecté. Réessayez quand il sera en ligne.");

@@ -434,7 +434,7 @@ public class PoliceScreen extends Screen {
             boolean pending = r.status() == 0;
             int color = pending ? MineNorthStyle.WARN : r.status() == 1 ? MineNorthStyle.OK : MineNorthStyle.ALERT;
             card(x, y, w, 18, color);
-            label(r.type() == 0 ? "PERQUIS." : "PERMIS", x + 8, y + 5, MineNorthStyle.CYAN);
+            label(r.type() == 0 ? "PERQUIS." : r.type() == 2 ? "CONTEST." : "PERMIS", x + 8, y + 5, MineNorthStyle.CYAN);
             label(r.target(), x + 60, y + 5, MineNorthStyle.WHITE, 78);
             label("par " + r.by(), x + 142, y + 5, MineNorthStyle.MUTED, 76);
             if (pending && chief) {
