@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "minenorthpolice:block/barriere_chantier"
+  },
+  "facing=east": {
+   "model": "minenorthpolice:block/barriere_chantier",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "minenorthpolice:block/barriere_chantier",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "minenorthpolice:block/barriere_chantier",
+   "y": 270
+  }
+ }
+}

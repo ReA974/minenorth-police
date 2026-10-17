@@ -21,6 +21,10 @@ public final class ModBlocks {
 
     public static final RegistryObject<Block> HERSE = BLOCKS.register("herse", HerseBlock::new);
 
+    /** Accessoires de contrôle posés par la police : barrière et plot de chantier (voir {@link PropBlock}). */
+    public static final RegistryObject<Block> BARRIERE = BLOCKS.register("barriere_chantier", PropBlock::barrier);
+    public static final RegistryObject<Block> PLOT = BLOCKS.register("plot_chantier", PropBlock::cone);
+
     /** Poste de douane : borne de contrôle (voir {@link DouaneBlock}). */
     public static final RegistryObject<Block> DOUANE = BLOCKS.register("douane", DouaneBlock::new);
 

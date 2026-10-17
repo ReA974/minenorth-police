@@ -31,7 +31,12 @@ public final class ModItems {
     public static final RegistryObject<Item> RADAR_HACK = ITEMS.register("pirate_radar", RadarHackItem::new);
     /** Mallette d'avocat : contestation d'amendes / condamnations (réservée aux membres de l'entreprise d'avocats de la config). */
     public static final RegistryObject<Item> MALLETTE_AVOCAT = ITEMS.register("mallette_avocat", LawyerCaseItem::new);
-    /** Poste de douane (borne de contrôle), posé par les admins. */
+    /** Barrière et plot de chantier : points de contrôle posés par la police (par code, sans évènement de pose : WorldGuard n'a rien à refuser). */
+    public static final RegistryObject<Item> BARRIERE = ITEMS.register("barriere_chantier",
+            () -> new RadarPlacerItem(ModBlocks.BARRIERE, new Item.Properties().stacksTo(16)));
+    public static final RegistryObject<Item> PLOT = ITEMS.register("plot_chantier",
+            () -> new RadarPlacerItem(ModBlocks.PLOT, new Item.Properties().stacksTo(32)));
+    /** Poste de douane (borne de contrôle), posé par la police ou les admins. */
     public static final RegistryObject<Item> POSTE_DOUANE = ITEMS.register("poste_douane",
             () -> new RadarPlacerItem(ModBlocks.DOUANE, new Item.Properties().stacksTo(16)));
     public static final RegistryObject<Item> HERSE = ITEMS.register("herse_police", () -> new HerseItem(new Item.Properties().stacksTo(16)));
@@ -51,6 +56,8 @@ public final class ModItems {
                 out.accept(RADAR_HACK.get());
                 out.accept(MALLETTE_AVOCAT.get());
                 out.accept(POSTE_DOUANE.get());
+                out.accept(BARRIERE.get());
+                out.accept(PLOT.get());
                 out.accept(HERSE.get());
                 out.accept(FOURRIERE.get());
                 out.accept(TASER.get());

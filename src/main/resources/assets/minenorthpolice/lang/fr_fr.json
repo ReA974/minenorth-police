@@ -18,5 +18,9 @@
   "item.minenorthpolice.pirate_radar": "Pirate de radar",
   "item.minenorthpolice.mallette_avocat": "Mallette d'avocat",
   "block.minenorthpolice.douane": "Poste de douane",
-  "item.minenorthpolice.poste_douane": "Poste de douane"
+  "item.minenorthpolice.poste_douane": "Poste de douane",
+  "block.minenorthpolice.barriere_chantier": "Barrière de chantier",
+  "item.minenorthpolice.barriere_chantier": "Barrière de chantier",
+  "block.minenorthpolice.plot_chantier": "Plot de chantier",
+  "item.minenorthpolice.plot_chantier": "Plot de chantier"
 }

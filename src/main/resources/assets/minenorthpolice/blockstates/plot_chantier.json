@@ -1,0 +1,19 @@
+{
+ "variants": {
+  "facing=north": {
+   "model": "minenorthpolice:block/plot_chantier"
+  },
+  "facing=east": {
+   "model": "minenorthpolice:block/plot_chantier",
+   "y": 90
+  },
+  "facing=south": {
+   "model": "minenorthpolice:block/plot_chantier",
+   "y": 180
+  },
+  "facing=west": {
+   "model": "minenorthpolice:block/plot_chantier",
+   "y": 270
+  }
+ }
+}

@@ -113,13 +113,19 @@ public final class Tribunal {
                 fr.minenorth.api.MineNorth.bank().refund(s, client, rec.amount, "police:contestation");
                 note += ", amende remboursée " + (rec.amount / 100) + " €";
             }
+            if (rec.points > 0) {
+                int left = fr.minenorth.police.compat.Compat.addPoints(s, client, rec.points);
+                note += left >= 0 ? ", " + rec.points + " point(s) rendu(s) (total " + left + ")"
+                        : ", points non rendus (pas de permis de conduire valide)";
+            }
             note += " : " + rec.text;
         }
         PoliceService.addEntry(s, client, q.targetName, PoliceData.NOTE, "Tribunal", note);
         ServerPlayer l = s.getPlayerList().getPlayer(q.by);
         if (l != null) l.sendSystemMessage(Component.literal("§a[Justice] Contestation acceptée pour " + q.targetName + "."));
         ServerPlayer c = s.getPlayerList().getPlayer(client);
-        if (c != null) c.sendSystemMessage(Component.literal("§a[Justice] Votre contestation est acceptée : la décision est annulée."));
+        if (c != null) c.sendSystemMessage(Component.literal("§a[Justice] Votre contestation est acceptée : la décision est annulée"
+                + (rec != null && rec.points > 0 ? " et vos points sont rendus (si vous avez un permis de conduire valide)." : ".")));
         d.setDirty();
         return "Contestation acceptée : entrée annulée.";
     }

@@ -3,6 +3,8 @@
  "values": [
   "minenorthpolice:radar_fixe",
   "minenorthpolice:radar_borne",
-  "minenorthpolice:douane"
+  "minenorthpolice:douane",
+  "minenorthpolice:barriere_chantier",
+  "minenorthpolice:plot_chantier"
  ]
 }

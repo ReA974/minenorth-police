@@ -118,6 +118,18 @@ public final class Compat {
         }
     }
 
+    /** Rend des points (plafonnés au maximum du mod Permis). Renvoie le nouveau total, ou -1 si impossible (pas de permis de conduire valide). */
+    public static int addPoints(MinecraftServer s, UUID id, int amount) {
+        int now = points(s, id);
+        if (now < 0) return -1;
+        try {
+            return (Integer) Class.forName("com.minenorth_permis.Licences").getMethod("setPoints", MinecraftServer.class, UUID.class, int.class)
+                    .invoke(null, s, id, now + amount);
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
     /** Annule toutes les catégories du permis de conduire (voiture, poids lourd, moto). */
     public static boolean revokeDriving(MinecraftServer s, UUID id) {
         if (!hasPermis()) return false;

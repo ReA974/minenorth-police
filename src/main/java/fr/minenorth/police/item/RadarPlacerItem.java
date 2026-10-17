@@ -28,18 +28,42 @@ public class RadarPlacerItem extends Item {
         this.block = block;
     }
 
+    /** Objet rendu pour un accessoire posé par la police, ou null si ce bloc n'en est pas un. */
+    @javax.annotation.Nullable
+    private static ItemStack itemFor(Block b) {
+        if (b == fr.minenorth.police.block.ModBlocks.BARRIERE.get()) return new ItemStack(ModItems.BARRIERE.get());
+        if (b == fr.minenorth.police.block.ModBlocks.PLOT.get()) return new ItemStack(ModItems.PLOT.get());
+        if (b == fr.minenorth.police.block.ModBlocks.DOUANE.get()) return new ItemStack(ModItems.POSTE_DOUANE.get());
+        return null;
+    }
+
+    /** Accroupi + clic droit sur une barrière, un plot ou un poste de douane (un objet de pose en main) : le reprend, sans évènement de casse. */
+    private static boolean pickUp(ServerPlayer p, ServerLevel level, BlockPos pos) {
+        BlockState st = level.getBlockState(pos);
+        ItemStack back = itemFor(st.getBlock());
+        if (back == null) return false;
+        if (!(p.hasPermissions(2) || p.getAbilities().instabuild) && !PoliceTool.allowed(p)) return true;
+        level.removeBlockEntity(pos);
+        level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
+        if (!p.getAbilities().instabuild) p.getInventory().placeItemBackInInventory(back);
+        level.playSound(null, pos, st.getSoundType().getBreakSound(), SoundSource.BLOCKS, 0.8f, 1.1f);
+        return true;
+    }
+
     /** Pose le radar contre la face cliquée (ou à la place du bloc cliqué s'il est remplaçable). */
     public static void place(ServerPlayer p, BlockPos clicked, Direction face) {
         ItemStack st = p.getMainHandItem();
         if (!(st.getItem() instanceof RadarPlacerItem item)) return;
         // Borne fixe : posée par les admins ; radar mobile : par les policiers.
-        if (item.block.get() instanceof fr.minenorth.police.block.RadarBorneBlock || item.block.get() instanceof fr.minenorth.police.block.DouaneBlock) {
+        ServerLevel lv = p.serverLevel();
+        if (p.isShiftKeyDown() && pickUp(p, lv, clicked)) return;
+        if (item.block.get() instanceof fr.minenorth.police.block.RadarBorneBlock) {
             if (!(p.hasPermissions(2) || p.getAbilities().instabuild)) {
                 p.displayClientMessage(Component.literal("§cCette borne est posée par les administrateurs."), true);
                 return;
             }
-        } else if (!PoliceTool.allowed(p)) return;
-        ServerLevel level = p.serverLevel();
+        } else if (!(p.hasPermissions(2) || p.getAbilities().instabuild) && !PoliceTool.allowed(p)) return;
+        ServerLevel level = lv;
         BlockPos target = level.getBlockState(clicked).canBeReplaced() ? clicked : clicked.relative(face);
         Block b = item.block.get();
         BlockState state = b.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, p.getDirection().getOpposite());
