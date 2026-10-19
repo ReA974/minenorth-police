@@ -50,7 +50,7 @@ public final class ModNetwork {
             A_PHONE = 28;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "8";
+    private static final String PROTOCOL = "9";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -66,6 +66,7 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, LawyerOpenPacket.class, LawyerOpenPacket::encode, LawyerOpenPacket::decode, LawyerOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        id = PhoneNet.register(CHANNEL, id);   // application « téléphone » (état + ouverture)
     }
 
     public static void send(ServerPlayer p, ViewPacket v) { CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), v); }
