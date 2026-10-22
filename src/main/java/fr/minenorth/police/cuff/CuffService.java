@@ -520,18 +520,18 @@ public final class CuffService {
     }
 
     /**
-     * Touche « Monter / faire descendre le menotté » (paquet) : monte le captif escorté dans le véhicule le plus proche ;
-     * sinon fait descendre un captif installé dans un véhicule proche. Rien n'est cru du client : tout est revérifié ici.
+     * Ctrl + clic droit avec des menottes (paquet) : menotte la personne assise (passager) que le policier vise. Mêmes règles, droits et distances
+     * que le menottage normal (la cible ne peut pas bouger : pas de pose à interrompre, mais l'arme tenue en main est refusée comme ailleurs).
      */
-    public static void vehicleKey(ServerPlayer actor) {
-        if (!PoliceConfig.get().menottes_actives || isCuffed(actor.getUUID()) || actor.isSpectator()) return;
-        if (escortedBy(actor) != null) {
-            Entity veh = Mts.nearestWithPassengerSeat(actor, 6);
-            if (veh == null) { say(actor, "§cAucun véhicule avec une place passager libre à moins de 6 blocs."); return; }
-            board(actor, veh);
-            return;
-        }
-        if (!dismount(actor)) say(actor, "§7Personne à faire descendre à proximité.");
+    public static void cuffSeated(ServerPlayer actor) {
+        PoliceConfig cfg = PoliceConfig.get();
+        if (!cfg.menottes_actives || isCuffed(actor.getUUID()) || actor.isSpectator() || !actor.isAlive()) return;
+        ItemStack st = actor.getMainHandItem();
+        int type = st.is(ModItems.MENOTTES_POLICE.get()) ? POLICE : st.is(ModItems.MENOTTES_ARTISANALES.get()) ? ARTISANAL : -1;
+        if (type < 0) return;
+        Entity t = PoliceTool.target(actor, cfg.menottes_portee, 25, e -> e instanceof ServerPlayer p && p.isPassenger() && !isCuffed(p.getUUID()));
+        if (!(t instanceof ServerPlayer target)) { say(actor, "§7Visez une personne assise dans un véhicule."); return; }
+        cuffAction(actor, target, st, type, null);
     }
 
     /** Fait descendre le menotté assis le plus proche (10 blocs) que ce joueur a le droit de manipuler. */

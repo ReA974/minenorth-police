@@ -56,7 +56,7 @@ public final class ModNetwork {
             A_UNCUFF = 30;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "11";
+    private static final String PROTOCOL = "12";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -73,7 +73,7 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, CuffSyncPacket.class, CuffSyncPacket::encode, CuffSyncPacket::decode, CuffSyncPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
-        CHANNEL.registerMessage(id++, CuffKeyPacket.class, (p, b) -> {}, b -> new CuffKeyPacket(), CuffKeyPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, CuffSeatedPacket.class, (p, b) -> {}, b -> new CuffSeatedPacket(), CuffSeatedPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, CuffMenuOpenPacket.class, CuffMenuOpenPacket::encode, CuffMenuOpenPacket::decode, CuffMenuOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, CuffMenuActionPacket.class, CuffMenuActionPacket::encode, CuffMenuActionPacket::decode, CuffMenuActionPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         id = PhoneNet.register(CHANNEL, id);   // application « téléphone » (état + ouverture)
@@ -200,10 +200,10 @@ public final class ModNetwork {
         }
     }
 
-    /** Client -> serveur : touche « monter / faire descendre le menotté ». Le serveur revérifie droits, distance et état. */
-    public record CuffKeyPacket() {
-        static void handle(CuffKeyPacket p, Supplier<NetworkEvent.Context> c) {
-            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.vehicleKey(sp); });
+    /** Client -> serveur : Ctrl + clic droit avec des menottes (menotter une personne assise dans un véhicule). Le serveur choisit la cible et revérifie tout. */
+    public record CuffSeatedPacket() {
+        static void handle(CuffSeatedPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.cuffSeated(sp); });
             c.get().setPacketHandled(true);
         }
     }

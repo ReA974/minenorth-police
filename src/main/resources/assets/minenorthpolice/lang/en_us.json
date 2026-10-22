@@ -1,4 +1,5 @@
 {
+  "key.categories.minenorth": "MineNorth",
   "item.minenorthpolice.tablette_police": "Tablette de police",
   "item.minenorthpolice.radar_main": "Radar à main",
   "block.minenorthpolice.radar_fixe": "Radar mobile",
@@ -27,7 +28,5 @@
   "item.minenorthpolice.menottes_artisanales": "Menottes artisanales",
   "item.minenorthpolice.cle_menottes": "Clé de menottes",
   "item.minenorthpolice.sac_de_jute": "Sac de jute",
-  "key.minenorthpolice.menotte_vehicule": "Menotté : monter / faire descendre du véhicule",
-  "key.categories.minenorthpolice": "Police MineNorth",
   "container.minenorthpolice.fouille": "Fouille"
 }

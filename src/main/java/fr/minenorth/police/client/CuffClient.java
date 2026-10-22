@@ -1,11 +1,9 @@
 package fr.minenorth.police.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import fr.minenorth.police.MineNorthPolice;
 import fr.minenorth.police.cuff.ModMenus;
 import fr.minenorth.police.network.ModNetwork;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.MenuScreens;
@@ -17,14 +15,12 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.MovementInputUpdateEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +38,6 @@ public final class CuffClient {
     /** Pose : angle d'écartement vers l'arrière et vers le centre des bras (mêmes valeurs que tools/gen_menottes.py). */
     private static final float BACK = 0.65f, INWARD = 0.70f;
     public static final ResourceLocation JUTE = new ResourceLocation(MineNorthPolice.MOD_ID, "textures/gui/sac_vue.png");
-    public static final KeyMapping KEY = new KeyMapping("key.minenorthpolice.menotte_vehicule", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_U, "key.categories.minenorthpolice");
 
     public static void sync(Map<UUID, Integer> m) {
         FLAGS.clear();
@@ -96,9 +91,6 @@ public final class CuffClient {
                 fr.minenorth.police.cuff.CuffService.clientCuffed = CuffClient::cuffed;
             });
         }
-
-        @SubscribeEvent
-        public static void keys(RegisterKeyMappingsEvent e) { e.register(KEY); }
     }
 
     // ------------------------------------------------------------------ évènements (bus Forge)
@@ -111,6 +103,16 @@ public final class CuffClient {
         /** Un menotté ne clique plus : ni coup, ni utilisation, ni pose (le serveur l'interdit aussi). */
         @SubscribeEvent(priority = EventPriority.HIGHEST)
         public static void click(InputEvent.InteractionKeyMappingTriggered e) {
+            Minecraft mc = Minecraft.getInstance();
+            // Ctrl + clic droit avec des menottes : menotter une personne assise dans un véhicule (le serveur choisit et revérifie la cible).
+            if (e.isUseItem() && mc.player != null && net.minecraft.client.gui.screens.Screen.hasControlDown() && !localCuffed()
+                    && (mc.player.getMainHandItem().is(fr.minenorth.police.item.ModItems.MENOTTES_POLICE.get())
+                    || mc.player.getMainHandItem().is(fr.minenorth.police.item.ModItems.MENOTTES_ARTISANALES.get()))) {
+                e.setCanceled(true);
+                e.setSwingHand(false);
+                ModNetwork.CHANNEL.sendToServer(new ModNetwork.CuffSeatedPacket());
+                return;
+            }
             if (!localCuffed()) return;
             e.setCanceled(true);
             e.setSwingHand(false);
@@ -128,7 +130,6 @@ public final class CuffClient {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player == null) return;
             if (cuffed(mc.player.getUUID())) mc.player.setSprinting(false);
-            while (KEY.consumeClick()) ModNetwork.CHANNEL.sendToServer(new ModNetwork.CuffKeyPacket());
             boolean hood = hooded(mc.player.getUUID());
             if (hood != muffled) {
                 muffled = hood;
