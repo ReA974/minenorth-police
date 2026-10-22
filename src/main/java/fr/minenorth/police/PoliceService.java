@@ -145,6 +145,13 @@ public final class PoliceService {
                 citizens, dossier, requests, officers, inventory, List.of(), List.of(), duty(p, false));
     }
 
+    /** Onglet MENOTTES : menottés connectés (nom, ravisseur - type - temps restant), avec bouton de libération à distance. */
+    private static void sendCuffs(ServerPlayer p, String msg, boolean ok) {
+        PoliceData d = PoliceData.get(p.server);
+        ModNetwork.send(p, new ModNetwork.ViewPacket(ModNetwork.V_CUFFS, rank(p), msg, ok, "", 0, 1, pending(d),
+                fr.minenorth.police.cuff.CuffService.list(p.server), null, List.of(), List.of(), List.of(), List.of(), List.of(), duty(p, false)));
+    }
+
     /** Onglet RADARS : flashs des radars fixes, les plus récents d'abord (200 max). */
     private static void sendRadars(ServerPlayer p, String msg, boolean ok) {
         PoliceData d = PoliceData.get(p.server);
@@ -591,6 +598,7 @@ public final class PoliceService {
     // ------------------------------------------------------------------ actions
     public static void handle(ServerPlayer p, ActionPacket k) {
         if (k.action() == ModNetwork.A_CLOSE) { SESSIONS.remove(p.getUUID()); return; }
+        if (fr.minenorth.police.cuff.CuffService.isCuffed(p.getUUID())) return;
         int rank = rank(p);
         // Il faut être policier ET avoir ouvert la tablette.
         if (rank < 0 || !SESSIONS.containsKey(p.getUUID())) return;
@@ -622,6 +630,11 @@ public final class PoliceService {
                 sendDossier(p, t, r.msg(), r.ok());
             }
             case ModNetwork.A_RADARS -> sendRadars(p, "", true);
+            case ModNetwork.A_CUFFS -> sendCuffs(p, "", true);
+            case ModNetwork.A_UNCUFF -> {
+                boolean freed = fr.minenorth.police.cuff.CuffService.release(s, t, "libéré à distance par " + display(s, p.getUUID()));
+                sendCuffs(p, freed ? "Menottes retirées." : "Ce joueur n'est plus menotté.", freed);
+            }
             case ModNetwork.A_ALERTS -> sendAlerts(p, "", true);
             case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
             case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }

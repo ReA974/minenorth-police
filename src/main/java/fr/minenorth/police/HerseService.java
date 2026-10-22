@@ -80,6 +80,7 @@ public final class HerseService {
      * donc WorldGuard (Arclight) ne voit aucune interaction. Revérifie objet en main, droit d'usage et distance.
      */
     public static void useFromPacket(ServerPlayer p, BlockPos pos, int face, Vec3 hit) {
+        if (fr.minenorth.police.cuff.CuffService.isCuffed(p.getUUID())) return;
         boolean radar = p.getMainHandItem().getItem() instanceof fr.minenorth.police.item.RadarPlacerItem;
         if ((!p.getMainHandItem().is(ModItems.HERSE.get()) && !radar) || !p.isAlive() || p.isSpectator()) return;
         // Sécurité : valeurs envoyées par le client. Un NaN passerait « distance > 8 » ; le bloc cliqué doit lui aussi être à portée.

@@ -177,6 +177,7 @@ public class PoliceScreen extends Screen {
         // Ouvre le bureau du mod Accueil Police : plaintes, historique, rendez-vous, objets trouvés, fourrière.
         more.add(new Nav("Bureau", false, () -> send(ModNetwork.A_DESK, null, "", "", 0, 0)));
         more.add(new Nav("Fourrière", false, () -> send(ModNetwork.A_IMPOUND, null, "", "", 0, 0)));
+        more.add(new Nav("Menottes", v.view() == ModNetwork.V_CUFFS, () -> send(ModNetwork.A_CUFFS, null, "", "", 0, 0)));
         if (v.grade() == 0) more.add(new Nav("Effectifs", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
         if (v.duty().dispatcher()) more.add(new Nav("Dispatch", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
         navRow(main, x, top + 43, w);
@@ -189,6 +190,7 @@ public class PoliceScreen extends Screen {
         else if (v.view() == ModNetwork.V_RADARS) buildRadars(x, w);
         else if (v.view() == ModNetwork.V_ALERTS) buildAlerts(x, w);
         else if (v.view() == ModNetwork.V_PLATES) buildPlates(x, w);
+        else if (v.view() == ModNetwork.V_CUFFS) buildCuffs(x, w);
         else if (v.view() == ModNetwork.V_DISPATCH) buildDispatch(x, w);
         else buildList(x, w);
     }
@@ -520,6 +522,28 @@ public class PoliceScreen extends Screen {
             if (lookup > 0) btn(x + w - (chief ? 26 : 6) - 50, y + 15, 48, 12, "PROPRIO", MineNorthStyle.DARK,
                     () -> { keep(); send(ModNetwork.A_PLATES, null, f.plate(), "", 0, 0); });
             if (chief) btn(x + w - 20, y + 7, 18, 14, "X", MineNorthStyle.PINK, () -> send(ModNetwork.A_FLASH_DELETE, null, "", "", f.id(), 0));
+        }
+        pager(pages, x + w, top + H - 38, () -> go(() -> page--), () -> go(() -> page++), page);
+    }
+
+    // ---------- menottés connectés (libération à distance)
+    private void buildCuffs(int x, int w) {
+        int y0 = top + ct, rows = 4;
+        List<ModNetwork.Citizen> list = v.citizens();
+        String count = list.size() + " menotté(s) connecté(s)";
+        label(count, x, y0 + 5, MineNorthStyle.MUTED);
+        int pages = Math.max(1, (list.size() + rows - 1) / rows);
+        page = Math.max(0, Math.min(pages - 1, page));
+        if (list.isEmpty()) label("Personne n'est menotté pour le moment.", x, y0 + 30, MineNorthStyle.MUTED);
+        for (int i = 0; i < rows; i++) {
+            int idx = page * rows + i;
+            if (idx >= list.size()) break;
+            ModNetwork.Citizen c = list.get(idx);
+            int y = y0 + 26 + i * 30;
+            card(x, y, w, 28, c.wanted() ? MineNorthStyle.PINK : MineNorthStyle.CYAN);
+            label(c.name() + (c.wanted() ? "  (sac de jute)" : ""), x + 8, y + 5, MineNorthStyle.WHITE, w - 120);
+            label(c.rpName(), x + 8, y + 16, MineNorthStyle.CYAN, w - 120);
+            btn(x + w - 100, y + 4, 94, 20, "LIBÉRER", RED, () -> { keep(); send(ModNetwork.A_UNCUFF, c.id(), "", "", 0, 0); });
         }
         pager(pages, x + w, top + H - 38, () -> go(() -> page--), () -> go(() -> page++), page);
     }

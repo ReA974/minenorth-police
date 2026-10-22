@@ -54,7 +54,8 @@ public final class PoliceConfig {
     /** Kit donné par /police equipement et par le panneau admin : "id_objet quantité". */
     public List<String> kit_equipement = new ArrayList<>(List.of(
             "minenorthpolice:radar_main 1", "minenorthpolice:detecteur_metaux 1", "minenorthpolice:taser 1",
-            "minenorthpolice:cartouche_taser 16", "minenorthpolice:test_salivaire 8"));
+            "minenorthpolice:cartouche_taser 16", "minenorthpolice:test_salivaire 8",
+            "minenorthpolice:menottes_police 2", "minenorthpolice:cle_menottes 1"));
 
     // ------------------------------------------------------------------ radars
     /** Portée du radar à main (blocs). */
@@ -102,6 +103,59 @@ public final class PoliceConfig {
     public int detecteur_portee = 4;
     /** Vrai : le policier voit le nom des objets détectés. Faux : seulement le nombre. */
     public boolean detecteur_afficher_objets = true;
+
+
+    // ------------------------------------------------------------------ menottes, fouille, escorte, sac de jute
+    /** Interrupteur général : faux = menottes, fouille, escorte et sac de jute inutilisables. */
+    public boolean menottes_actives = true;
+    /** Portée (blocs) pour menotter, libérer, escorter ou mettre un sac de jute. */
+    public double menottes_portee = 3.0;
+    /** Durée (secondes) de la pose des menottes sur une cible qui n'est ni inconsciente, ni à genoux, ni les mains en l'air. */
+    public int menottes_pose_secondes = 3;
+    /** Pendant la pose, la cible qui s'éloigne de plus de cette distance (blocs) de son point de départ se débat : la pose échoue. */
+    public double menottes_pose_deplacement_max = 1.5;
+    /** Libération automatique des menottes après ce temps (minutes, temps réel). 0 = jamais. */
+    public int menottes_liberation_minutes = 10;
+    /** Vrai : les menottes sautent quand le menotté se déconnecte (sinon il les garde à la reconnexion). */
+    public boolean menottes_liberer_deconnexion = false;
+    /** Vrai : les menottes sautent à la mort du menotté. */
+    public boolean menottes_liberer_mort = true;
+    /** Ralentissement du menotté (pourcentage de vitesse en moins). */
+    public int menottes_ralentissement_pourcent = 35;
+    /** Vrai : les menottes de police et la clé sont réservées aux policiers enregistrés (les OP ne sont pas exemptés). */
+    public boolean menottes_reservees_police = true;
+    /** Vrai : les menottes artisanales (illégales, fabriquées par les mafieux) fonctionnent. */
+    public boolean menottes_artisanales_actives = true;
+    /** Emotes (nom dans le mod Emotes) qui permettent de menotter tout de suite : mains en l'air, à genoux, assis. */
+    public List<String> menottes_emotes_reddition = new ArrayList<>(List.of("BRAS_EN_L_AIR", "PRIER", "ASSIS"));
+    /** Pour menotter sans attendre une cible qui résiste : elle ne doit pas tenir d'arme (liste « objets du détecteur de métaux ») ou doit être ralentie (taser). */
+    public boolean menottes_refuser_si_arme = true;
+
+    /** Fouille d'un joueur menotté : délai (secondes) par objet retiré. */
+    public int fouille_delai_secondes = 3;
+    /** Distance maximum (blocs) entre le fouilleur et le menotté pendant la fouille. */
+    public double fouille_portee = 3.5;
+    /** Vrai : un ravisseur peut fouiller ses propres captifs menottés avec des menottes artisanales (les policiers peuvent toujours fouiller). */
+    public boolean fouille_ravisseurs = true;
+    /** Vrai : les objets retirés par un policier sont inscrits au casier du fouillé (type SAISIE). */
+    public boolean fouille_inscrire_casier = true;
+    /** Objets illégaux mis en surbrillance dans l'écran de fouille (id exact, joker « mod:* » ou tag « #mod:tag »). */
+    public List<String> fouille_objets_illegaux = new ArrayList<>(List.of(
+            "minenorthdrogue:*", "minenorthvol:dirty_cash", "minenorthvol:fake_plates", "minenorthvol:screwdriver", "minenorthvol:lockpicks",
+            "minenorthvol:lockpick_kit", "minenorthvol:hacker_tool", "minenorthpolice:menottes_artisanales", "minenorthpolice:sac_de_jute",
+            "minenorthpolice:pirate_radar", "tacz:*", "minecraft:tnt"));
+
+    /** Escorte : distance (blocs) à laquelle le menotté suit son ravisseur. */
+    public double escorte_distance = 1.5;
+    /** Au-delà de cette distance (blocs) ou si un obstacle bloque, le menotté est relâché. */
+    public double escorte_distance_max = 8.0;
+    /** Vitesse maximum de traction du menotté (blocs par tick). */
+    public double escorte_vitesse_max = 0.32;
+
+    /** Sac de jute : durée maximum (secondes) avant qu'il ne se retire seul. */
+    public int sac_duree_secondes = 600;
+    /** Sac mis sur un joueur à genoux / inconscient mais pas menotté : durée (secondes) avant qu'il ne se retire seul. */
+    public int sac_sans_menottes_secondes = 90;
 
     // ------------------------------------------------------------------ taser
     public int taser_portee = 10;
@@ -176,6 +230,20 @@ public final class PoliceConfig {
         c.test_portee = Math.max(2, c.test_portee);
         if (c.detecteur_objets == null) c.detecteur_objets = new ArrayList<>();
         c.detecteur_portee = Math.max(2, c.detecteur_portee);
+        c.menottes_portee = Math.max(1.5, Math.min(6, c.menottes_portee));
+        c.menottes_pose_secondes = Math.max(0, Math.min(15, c.menottes_pose_secondes));
+        c.menottes_pose_deplacement_max = Math.max(0.3, Math.min(6, c.menottes_pose_deplacement_max));
+        c.menottes_liberation_minutes = Math.max(0, c.menottes_liberation_minutes);
+        c.menottes_ralentissement_pourcent = Math.max(0, Math.min(90, c.menottes_ralentissement_pourcent));
+        if (c.menottes_emotes_reddition == null) c.menottes_emotes_reddition = def.menottes_emotes_reddition;
+        c.fouille_delai_secondes = Math.max(0, Math.min(30, c.fouille_delai_secondes));
+        c.fouille_portee = Math.max(2, Math.min(8, c.fouille_portee));
+        if (c.fouille_objets_illegaux == null) c.fouille_objets_illegaux = def.fouille_objets_illegaux;
+        c.escorte_distance = Math.max(0.8, Math.min(3, c.escorte_distance));
+        c.escorte_distance_max = Math.max(3, Math.min(32, c.escorte_distance_max));
+        c.escorte_vitesse_max = Math.max(0.05, Math.min(0.6, c.escorte_vitesse_max));
+        c.sac_duree_secondes = Math.max(5, c.sac_duree_secondes);
+        c.sac_sans_menottes_secondes = Math.max(5, c.sac_sans_menottes_secondes);
         c.taser_portee = Math.max(2, Math.min(32, c.taser_portee));
         c.taser_degats = Math.max(0, c.taser_degats);
         c.taser_recharge_ticks = Math.max(0, c.taser_recharge_ticks);

@@ -44,6 +44,20 @@ public final class ModItems {
     public static final RegistryObject<Item> DETECTEUR_METAUX = ITEMS.register("detecteur_metaux", MetalDetectorItem::new);
     public static final RegistryObject<Item> FOURRIERE = ITEMS.register("ordre_fourriere", FourriereItem::new);
     public static final RegistryObject<Item> TASER = ITEMS.register("taser", TaserItem::new);
+    /** Menottes de police (acier chromé) : clic droit sur un joueur proche. Réservées aux policiers (config). */
+    public static final RegistryObject<Item> MENOTTES_POLICE = ITEMS.register("menottes_police", () -> new TipItem(new Item.Properties().stacksTo(8),
+            "§8Clic droit sur un joueur : le menotter (à genoux, mains en l'air ou inconscient : tout de suite ;",
+            "§8sinon pose de quelques secondes, il peut reculer ou se débattre). Clé : clic droit pour libérer."));
+    /** Menottes artisanales (illégales) : colliers serflex et chaîne rouillée, pour les mafieux. */
+    public static final RegistryObject<Item> MENOTTES_ARTISANALES = ITEMS.register("menottes_artisanales", () -> new TipItem(new Item.Properties().stacksTo(8),
+            "§cObjet illégal. §8Clic droit sur un joueur : le ligoter (mêmes conditions que les menottes de police).",
+            "§8Clic droit sur votre captif avec les menottes en main : les retirer."));
+    public static final RegistryObject<Item> CLE_MENOTTES = ITEMS.register("cle_menottes", () -> new TipItem(new Item.Properties().stacksTo(4),
+            "§8Clic droit sur un joueur menotté : libérer (policier, ou ravisseur)."));
+    /** Sac de jute : sur la tête d'un joueur menotté ou à genoux ; le retirer demande le clic droit d'un autre joueur avec le sac en main. */
+    public static final RegistryObject<Item> SAC_JUTE = ITEMS.register("sac_de_jute", () -> new TipItem(new Item.Properties().stacksTo(8),
+            "§8Clic droit sur un joueur menotté ou à genoux : lui mettre le sac sur la tête (vision presque nulle).",
+            "§8Clic droit avec le sac sur un joueur encagoulé : lui retirer."));
     public static final RegistryObject<Item> CARTOUCHE_TASER = ITEMS.register("cartouche_taser", () -> new Item(new Item.Properties().stacksTo(64)));
 
     /** Onglet « Police MineNorth » du menu créatif. */
@@ -60,6 +74,10 @@ public final class ModItems {
                 out.accept(PLOT.get());
                 out.accept(HERSE.get());
                 out.accept(FOURRIERE.get());
+                out.accept(MENOTTES_POLICE.get());
+                out.accept(CLE_MENOTTES.get());
+                out.accept(MENOTTES_ARTISANALES.get());
+                out.accept(SAC_JUTE.get());
                 out.accept(TASER.get());
                 out.accept(CARTOUCHE_TASER.get());
                 out.accept(TEST_SALIVAIRE.get());

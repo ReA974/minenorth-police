@@ -238,4 +238,50 @@ public final class Mts {
         } catch (Throwable ignored) {}
         return "Véhicule";
     }
+
+    // ------------------------------------------------------------------ places passagers (menottés escortés)
+
+    /** Vrai si cette pièce « siège » est celle du conducteur (placementDefinition.isController). */
+    private static boolean isControllerSeat(Object seat) {
+        Object def = field(seat, "placementDefinition");
+        return def != null && Boolean.TRUE.equals(field(def, "isController"));
+    }
+
+    /** Vrai si ce véhicule a une place passager libre (siège qui n'est pas celui du conducteur). */
+    public static boolean hasFreePassengerSeat(Entity vehicle) {
+        if (!isBuilder(vehicle)) return false;
+        for (Object s : seats(vehicle, null)) if (field(s, "rider") == null && !isControllerSeat(s)) return true;
+        return false;
+    }
+
+    /** Véhicule MTS le plus proche (dans le rayon) ayant une place passager libre, ou null. */
+    @Nullable
+    public static Entity nearestWithPassengerSeat(net.minecraft.server.level.ServerPlayer p, double radius) {
+        Entity best = null;
+        double bd = Double.MAX_VALUE;
+        for (Entity e : p.level().getEntities((Entity) null, p.getBoundingBox().inflate(radius), x -> isBuilder(x) && hasFreePassengerSeat(x))) {
+            double d = e.distanceToSqr(p);
+            if (d < bd) { bd = d; best = e; }
+        }
+        return best;
+    }
+
+    /** Installe le joueur sur une place passager libre du véhicule (jamais celle du conducteur). */
+    public static boolean seatPassenger(net.minecraft.server.level.ServerPlayer p, Entity vehicle) {
+        if (!isBuilder(vehicle)) return false;
+        try {
+            Object wrapper = Class.forName("mcinterface1201.WrapperPlayer")
+                    .getMethod("getWrapperFor", net.minecraft.world.entity.player.Player.class).invoke(null, p);
+            for (Object seat : seats(vehicle, null)) {
+                if (field(seat, "rider") != null || isControllerSeat(seat)) continue;
+                for (Method m : seat.getClass().getMethods()) {
+                    if (m.getName().equals("setRider") && m.getParameterCount() == 2) {
+                        if (Boolean.TRUE.equals(m.invoke(seat, wrapper, Boolean.TRUE))) return true;
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
 }

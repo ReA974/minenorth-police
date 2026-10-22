@@ -23,7 +23,9 @@ public final class ModNetwork {
     // Vues envoyées par le serveur.
     public static final int V_LIST = 0, V_DOSSIER = 1, V_REQUESTS = 2, V_ROSTER = 3, V_INVENTORY = 4, V_RADARS = 5, V_PLATES = 6, V_DISPATCH = 7,
             /** Appels d'urgence passés depuis le téléphone (urgence 17). */
-            V_ALERTS = 8;
+            V_ALERTS = 8,
+            /** Menottés actifs (liste, libération à distance). */
+            V_CUFFS = 9;
     // Actions envoyées par la tablette.
     public static final int A_LIST = 1, A_OPEN = 2, A_REQUESTS = 3, A_ROSTER = 4, A_INVENTORY = 5, A_FINE = 6, A_RECORD = 7, A_DELETE = 8,
             A_WANTED = 9, A_REQUEST = 10, A_DECIDE = 11, A_SEIZE = 12, A_GRADE = 13, A_CLOSE = 14,
@@ -47,10 +49,14 @@ public final class ModNetwork {
             /** Mise en fourrière du véhicule visé depuis la tablette. */
             A_IMPOUND = 27,
             /** Bascule « répondre aux appels du 17 sur mon téléphone » (n = vue actuelle, pour la réafficher). */
-            A_PHONE = 28;
+            A_PHONE = 28,
+            /** Ouvre l'onglet MENOTTES (menottés connectés). */
+            A_CUFFS = 29,
+            /** Libère à distance le menotté target. */
+            A_UNCUFF = 30;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "9";
+    private static final String PROTOCOL = "10";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -66,6 +72,8 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, LawyerOpenPacket.class, LawyerOpenPacket::encode, LawyerOpenPacket::decode, LawyerOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, LawyerSubmitPacket.class, LawyerSubmitPacket::encode, LawyerSubmitPacket::decode, LawyerSubmitPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, CuffSyncPacket.class, CuffSyncPacket::encode, CuffSyncPacket::decode, CuffSyncPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, CuffKeyPacket.class, (p, b) -> {}, b -> new CuffKeyPacket(), CuffKeyPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         id = PhoneNet.register(CHANNEL, id);   // application « téléphone » (état + ouverture)
     }
 
@@ -169,6 +177,32 @@ public final class ModNetwork {
         }
         static Duty decode(FriendlyByteBuf b) {
             return new Duty(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readVarInt(), b.readList(DutyView::decode), b.readVarInt());
+        }
+    }
+
+    /** Serveur -> clients : joueurs menottés / encagoulés (bit 1 = menotté, 2 = encagoulé, 4 = menottes artisanales). Sert à la pose, aux menottes visibles et à la toile de jute. */
+    public record CuffSyncPacket(java.util.Map<UUID, Integer> flags) {
+        static void encode(CuffSyncPacket p, FriendlyByteBuf b) {
+            b.writeVarInt(p.flags.size());
+            p.flags.forEach((k, v) -> { b.writeUUID(k); b.writeVarInt(v); });
+        }
+        static CuffSyncPacket decode(FriendlyByteBuf b) {
+            int n = Math.min(b.readVarInt(), 4096);
+            java.util.Map<UUID, Integer> m = new java.util.HashMap<>();
+            for (int i = 0; i < n; i++) m.put(b.readUUID(), b.readVarInt());
+            return new CuffSyncPacket(m);
+        }
+        static void handle(CuffSyncPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> fr.minenorth.police.client.CuffClient.sync(p.flags)));
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : touche « monter / faire descendre le menotté ». Le serveur revérifie droits, distance et état. */
+    public record CuffKeyPacket() {
+        static void handle(CuffKeyPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.vehicleKey(sp); });
+            c.get().setPacketHandled(true);
         }
     }
 

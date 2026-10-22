@@ -65,6 +65,30 @@ Tous les objets sont dans l'onglet créatif « Police MineNorth ».
 L'onglet **BUREAU** de la tablette ouvre le bureau du mod `minenorthaccueil` (plaintes, historique, rendez-vous, objets trouvés, fourrière).
 Sans ce mod, l'onglet affiche simplement un message.
 
+## Menottes, fouille, escorte et sac de jute
+
+Aucune commande : tout se fait au clic droit avec l'objet en main (onglet créatif commun « MineNorth »). Tout est décidé et revérifié côté serveur.
+
+| Objet | Rôle |
+|---|---|
+| **Menottes de police** (`menottes_police`) | Acier chromé. Réservées aux policiers enregistrés (`menottes_reservees_police`). Un OP n'est **pas** exempté. Dans le kit `/police equipement`. |
+| **Clé de menottes** (`cle_menottes`) | Clic droit sur un menotté : libère (policier, ou ravisseur). |
+| **Menottes artisanales** (`menottes_artisanales`) | Illégales : colliers serflex et chaîne rouillée, fabriquées par les mafieux (recette : 1 lingot de fer + 3 pépites + 2 ficelles). Utilisables par tous. Le ravisseur les retire en cliquant sur son captif avec les menottes en main. |
+| **Sac de jute** (`sac_de_jute`) | Recette : 8 ficelles. Sur un joueur menotté, à genoux ou inconscient. |
+
+**Menotter** : clic droit avec les menottes sur un joueur à moins de `menottes_portee` blocs. Immédiat si la cible est inconsciente (mod Secours), a les mains en l'air / est à genoux / assise (emote « Se rendre », « Prier », « S'asseoir par terre » du mod Emotes, liste `menottes_emotes_reddition`). Sinon : pose de `menottes_pose_secondes` s (barre dans la barre d'action) ; la cible échappe si elle s'éloigne de `menottes_pose_deplacement_max` blocs, et si elle tient une arme (liste du détecteur de métaux) sans être ralentie (taser), la pose est refusée.
+Un menotté ne peut plus attaquer, utiliser d'objet, casser/poser, ouvrir de coffre, jeter d'objet, courir ni sauter ; il est ralenti (`menottes_ralentissement_pourcent`). Les menottes sont visibles sur lui, bras joints dans le dos (la pose passe par le crochet `EmoteModel.POST` du mod Emotes : sans le mod Emotes, pas de pose mais menottes visibles ; le modèle du joueur n'est jamais remplacé). Libération automatique après `menottes_liberation_minutes` (10 par défaut), à la mort (`menottes_liberer_mort`), à la déconnexion si `menottes_liberer_deconnexion`, et à la mise en garde à vue / prison.
+
+**Fouille** : clic droit **accroupi** sur un menotté. Réservée aux policiers (et au ravisseur d'un captif aux menottes artisanales si `fouille_ravisseurs`). Écran de fouille : inventaire complet (armure et main gauche compris), objets illégaux (`fouille_objets_illegaux` : drogues, argent sale, faux plaques, outils de crochetage, armes TACZ...) entourés de rouge. Un clic sur un objet lance son retrait (`fouille_delai_secondes` s par objet, second clic = annule) : l'objet passe dans l'inventaire du fouilleur. La victime voit « Vous êtes fouillé ». Un policier voit ses saisies inscrites au casier (SAISIE, `fouille_inscrire_casier`). Journal serveur : `config/minenorth_police_fouilles.log`.
+
+**Escorte** : clic droit à main vide sur un menotté = il vous suit à `escorte_distance` blocs (traction bornée à `escorte_vitesse_max`, relâché au-delà de `escorte_distance_max` ou s'il est bloqué). Nouveau clic = relâche. Clic droit sur un véhicule MTS en escortant (ou touche **U**, réglable : « Menotté : monter / faire descendre ») = installe le captif sur une place passager libre ; il ne peut pas en descendre (il est remis à sa place) ; la même touche (ou un policier) le fait descendre.
+
+**Sac de jute** : sur la tête, remplace le casque (conservé dans l'état du joueur et restitué). Écran de toile de jute presque opaque et sons étouffés. Un autre joueur le retire par clic droit avec un sac en main sur l'encagoulé. Il se retire seul quand les menottes sautent ou après `sac_duree_secondes` (`sac_sans_menottes_secondes` si pas menotté).
+
+**Tablette** : onglet « Menottes » = menottés connectés (ravisseur, type, temps restant) avec bouton LIBÉRER à distance.
+
+Les objets de la liste sont générés par `tools/gen_menottes.py` (textures PIL, modèles JSON à éléments, aperçu logiciel hors jeu ; rappel : UV toujours dans le repère 0-16). Les réglages sont dans `config/minenorth_police.json` (fichier JSON, noms de champs explicites).
+
 ## Licence
 
 **Tous droits réservés - MineNorthRP.** Réutilisation, copie, modification, décompilation / ingénierie

@@ -71,6 +71,7 @@ public class HandRadarItem extends Item {
 
     /** Mesure du véhicule visé (côté serveur, appelée par le paquet du clic gauche en visée). */
     public static void measure(ServerPlayer p) {
+        if (fr.minenorth.police.cuff.CuffService.isCuffed(p.getUUID())) return;
         ItemStack st = p.getMainHandItem();
         if (!(st.getItem() instanceof HandRadarItem item) || !p.isAlive() || p.isSpectator() || !scoping(p)) return;
         if (p.getCooldowns().isOnCooldown(item) || !PoliceTool.allowed(p)) return;

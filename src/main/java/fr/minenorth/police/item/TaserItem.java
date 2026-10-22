@@ -98,6 +98,7 @@ public class TaserItem extends Item {
     /** Tir : appelé côté serveur quand le joueur fait clic gauche avec le taser en main. Plus précis en visant (clic droit). */
     public static void fire(ServerPlayer p) {
         ItemStack st = p.getMainHandItem();
+        if (fr.minenorth.police.cuff.CuffService.isCuffed(p.getUUID())) return;
         if (!(st.getItem() instanceof TaserItem item) || p.isSpectator() || !p.isAlive()) return;
         if (p.getCooldowns().isOnCooldown(item)) return;
         if (!PoliceTool.allowed(p)) return;
