@@ -93,6 +93,7 @@ public final class CuffClient {
             e.enqueueWork(() -> {
                 MenuScreens.register(ModMenus.FOUILLE.get(), SearchScreen::new);
                 hookPose();
+                fr.minenorth.police.cuff.CuffService.clientCuffed = CuffClient::cuffed;
             });
         }
 

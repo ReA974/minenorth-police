@@ -19,6 +19,7 @@ public class MineNorthPolice {
         ModItems.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModEntities.register(FMLJavaModLoadingContext.get().getModEventBus());
         fr.minenorth.police.cuff.ModMenus.register(FMLJavaModLoadingContext.get().getModEventBus());
+        fr.minenorth.police.cuff.CuffService.registerGunBlocks();
         ModSounds.register(FMLJavaModLoadingContext.get().getModEventBus());
         fr.minenorth.police.casier.MineNorthCasier.init(FMLJavaModLoadingContext.get().getModEventBus());
     }

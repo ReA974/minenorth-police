@@ -186,10 +186,18 @@ public final class CuffService {
         boolean done = false;
         if (e.getTarget() instanceof ServerPlayer target) {
             done = onPlayer(actor, target);
-        } else if (Mts.isMts(e.getTarget()) && escortedBy(actor) != null) {
-            Entity veh = e.getTarget();
-            if (!Mts.isBuilder(veh)) veh = nearestBuilder(actor);
-            done = veh != null && board(actor, veh);
+        } else if (Mts.isMts(e.getTarget())) {
+            if (escortedBy(actor) != null) {
+                Entity veh = e.getTarget();
+                if (!Mts.isBuilder(veh)) veh = nearestBuilder(actor);
+                done = veh != null && board(actor, veh);
+            } else {
+                // Menottes, clé ou main vide en accroupi sur le véhicule : faire descendre le prisonnier installé à l'intérieur.
+                Item held = actor.getMainHandItem().getItem();
+                boolean tool = held == ModItems.MENOTTES_POLICE.get() || held == ModItems.MENOTTES_ARTISANALES.get() || held == ModItems.CLE_MENOTTES.get()
+                        || (actor.getMainHandItem().isEmpty() && actor.isShiftKeyDown());
+                done = tool && dismount(actor);
+            }
         }
         if (done) { e.setCanceled(true); e.setCancellationResult(InteractionResult.SUCCESS); }
     }
@@ -287,6 +295,7 @@ public final class CuffService {
         p.setSprinting(false);
         p.stopUsingItem();
         if (p.containerMenu != p.inventoryMenu) p.closeContainer();
+        disarm(p);
     }
 
     private static void persist(ServerPlayer p) {
@@ -314,7 +323,8 @@ public final class CuffService {
         STATES.remove(target.getUUID());
         ESCORT.remove(target.getUUID());
         PENDING.values().removeIf(p -> p.target.equals(target.getUUID()));
-        if (SEAT.remove(target.getUUID()) != null && target.isPassenger()) Mts.unseat(target);
+        SEAT.remove(target.getUUID());
+        if (target.isPassenger()) { PoliceService.releaseHold(srv, target.getUUID()); if (target.isPassenger()) Mts.unseat(target); }
         AttributeInstance a = target.getAttribute(Attributes.MOVEMENT_SPEED);
         if (a != null) a.removeModifier(SPEED_ID);
         target.getPersistentData().remove(TAG);
@@ -450,19 +460,25 @@ public final class CuffService {
             board(actor, veh);
             return;
         }
-        ServerPlayer best = null; double bd = 64;
-        for (UUID id : new ArrayList<>(SEAT.keySet())) {
-            ServerPlayer c = online(actor.server, id);
-            State ts = STATES.get(id);
-            if (c == null || ts == null || !handler(actor, ts)) continue;
-            double d = c.level() == actor.level() ? c.distanceToSqr(actor) : Double.MAX_VALUE;
+        if (!dismount(actor)) say(actor, "§7Personne à faire descendre à proximité.");
+    }
+
+    /** Fait descendre le menotté assis le plus proche (10 blocs) que ce joueur a le droit de manipuler. */
+    private static boolean dismount(ServerPlayer actor) {
+        ServerPlayer best = null; double bd = 100;
+        for (ServerPlayer c : actor.server.getPlayerList().getPlayers()) {
+            State ts = STATES.get(c.getUUID());
+            if (ts == null || !ts.cuffed || !c.isPassenger() || c.level() != actor.level() || !handler(actor, ts)) continue;
+            double d = c.distanceToSqr(actor);
             if (d < bd) { bd = d; best = c; }
         }
-        if (best == null) { say(actor, "§7Personne à faire descendre à proximité."); return; }
+        if (best == null) return false;
         SEAT.remove(best.getUUID());
+        PoliceService.releaseHold(actor.server, best.getUUID());
         if (best.isPassenger()) Mts.unseat(best);
         tell(best, "§eVous êtes sorti du véhicule.");
         say(actor, "§a" + name(actor.server, best.getUUID()) + " descend du véhicule.");
+        return true;
     }
 
     // ------------------------------------------------------------------ interdits au menotté
@@ -576,6 +592,7 @@ public final class CuffService {
         if (!PENDING.isEmpty()) tickPending(s, now);
         if (!ESCORT.isEmpty()) tickEscort(s);
         if (now % 5 == 0 && !SEAT.isEmpty()) tickSeats(s);
+        if (now % 3 == 0) tickDisarm(s);
         if (now % 10 == 0) tickEnforce(s);
         if (now % 20 == 0) tickTimers(s);
     }
@@ -654,6 +671,73 @@ public final class CuffService {
             Entity veh = ((ServerLevel) c.level()).getEntity(en.getValue());
             if (veh == null || !veh.isAlive()) { SEAT.remove(en.getKey()); continue; }
             Mts.seatPassenger(c, veh);       // il a quitté son siège : on l'y remet (il ne peut pas descendre menotté)
+        }
+    }
+
+    /** Un menotté ne tient rien en main : l'objet est rangé dans l'inventaire et la main active est vidée (il ne peut de toute façon pas s'en servir). */
+    private static void disarm(ServerPlayer p) {
+        net.minecraft.world.entity.player.Inventory inv = p.getInventory();
+        ItemStack off = inv.offhand.get(0);
+        if (!off.isEmpty()) {
+            int free = inv.getFreeSlot();
+            if (free >= 0) { inv.setItem(free, off.copy()); inv.offhand.set(0, ItemStack.EMPTY); }
+        }
+        if (inv.getSelected().isEmpty()) return;
+        int empty = -1;
+        for (int i = 0; i < 9; i++) if (inv.getItem(i).isEmpty()) { empty = i; break; }
+        if (empty >= 0) {
+            inv.selected = empty;
+            p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket(empty));
+        } else {
+            int free = inv.getFreeSlot();
+            if (free >= 0) { inv.setItem(free, inv.getSelected().copy()); inv.setItem(inv.selected, ItemStack.EMPTY); }
+        }
+        p.inventoryMenu.broadcastChanges();
+    }
+
+    private static void tickDisarm(MinecraftServer s) {
+        for (Map.Entry<UUID, State> en : STATES.entrySet()) {
+            if (!en.getValue().cuffed) continue;
+            ServerPlayer p = online(s, en.getKey());
+            if (p != null && p.isAlive() && !(p.containerMenu instanceof SearchMenu)) disarm(p);
+        }
+    }
+
+    // ------------------------------------------------------------------ armes d'autres mods (TACZ) : aucun tir, rechargement ni dégât
+    /** Côté client : renseigné par CuffClient (qui est menotté). */
+    public static java.util.function.Predicate<UUID> clientCuffed;
+
+    private static boolean shooterCuffed(Object entity, boolean client) {
+        if (!(entity instanceof net.minecraft.world.entity.player.Player pl)) return false;
+        if (client) return clientCuffed != null && clientCuffed.test(pl.getUUID());
+        return isCuffed(pl.getUUID());
+    }
+
+    /** Écoute par réflexion les évènements annulables de TACZ (tir, rechargement, mêlée, dégâts) : aucune dépendance dure. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void registerGunBlocks() {
+        if (!net.minecraftforge.fml.ModList.get().isLoaded("tacz")) return;
+        String[] names = {"GunShootEvent", "GunFireEvent", "GunReloadEvent", "GunMeleeEvent", "GunFireSelectEvent", "GunDrawEvent", "EntityHurtByGunEvent$Pre"};
+        for (String n : names) {
+            try {
+                Class cls = Class.forName("com.tacz.guns.api.event.common." + n);
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, false, cls, (java.util.function.Consumer) (ev -> {
+                    try {
+                        net.minecraftforge.eventbus.api.Event e = (net.minecraftforge.eventbus.api.Event) ev;
+                        if (!e.isCancelable()) return;
+                        Object who = null;
+                        for (String m : new String[]{"getShooter", "getEntity", "getAttacker"}) {
+                            try { who = ev.getClass().getMethod(m).invoke(ev); break; } catch (NoSuchMethodException ignored) {}
+                        }
+                        Object side = null;
+                        try { side = ev.getClass().getMethod("getLogicalSide").invoke(ev); } catch (NoSuchMethodException ignored) {}
+                        boolean client = side != null && side.toString().equals("CLIENT");
+                        if (shooterCuffed(who, client)) e.setCanceled(true);
+                    } catch (Throwable ignored) {
+                    }
+                }));
+            } catch (Throwable ignored) {
+            }
         }
     }
 
