@@ -18,7 +18,6 @@ public final class CasierConfig {
     public static final ForgeConfigSpec.BooleanValue PRISE_AU_CASIER;
     public static final ForgeConfigSpec.BooleanValue CHEF_PEUT_POSER;
     public static final ForgeConfigSpec.BooleanValue CHEF_ADMIN;
-    public static final ForgeConfigSpec.BooleanValue JET_INTERDIT;
     public static final ForgeConfigSpec.ConfigValue<String> RAMASSAGE;
     public static final ForgeConfigSpec.IntValue SAC_CAPACITE;
     public static final ForgeConfigSpec.ConfigValue<String> ETRANGERS_VERS;
@@ -39,7 +38,7 @@ public final class CasierConfig {
                 "Fin de service sans passer par le casier si le joueur n'a RIEN d'étranger sur lui (que de l'équipement de service).",
                 "true  : la tablette / l'accueil peut terminer le service, le serveur reprend le stuff et rend l'inventaire civil tout seul.",
                 "false : il faut TOUJOURS passer par un casier pour terminer son service.",
-                "Dans tous les cas, s'il reste des affaires étrangères (saisies, preuves, objets civils reçus), le serveur refuse :",
+                "Dans tous les cas, s'il lui reste sur lui du matériel de service ou des affaires étrangères (saisies, preuves, objets civils reçus), le serveur refuse :",
                 "« Passe par ton casier : tu as encore des affaires sur toi ».")
                 .define("fin_de_service_sans_casier_si_rien_d_etranger_sur_soi", true);
         PRISE_AU_CASIER = b.comment(
@@ -62,9 +61,6 @@ public final class CasierConfig {
         b.pop();
 
         b.comment("=== PENDANT LE SERVICE ===").push("pendant_le_service");
-        JET_INTERDIT = b.comment("Interdit de jeter l'équipement de service, de le ranger dans un coffre / conteneur, de le poser dans un cadre ou de le donner.",
-                "Désactiver n'est pas recommandé : le serveur supprime de toute façon l'équipement de service trouvé chez un autre joueur.")
-                .define("equipement_non_jetable", true);
         RAMASSAGE = b.comment("Que fait un joueur en service quand il ramasse un objet qui n'est pas de son métier ?",
                 "SAC      : l'objet va dans son sac de saisie (preuves, saisies) ; sans sac sur lui, il ne peut pas ramasser.",
                 "INTERDIT : il ne ramasse rien.",

@@ -152,7 +152,7 @@ public final class CasierNet {
         }
         List<String> services = new ArrayList<>();
         if (admin) for (ServiceDef s : Services.all()) services.add(s.id() + "|" + s.name());
-        boolean free = CasierConfig.FIN_SANS_CASIER.get();
+        boolean free = CasierConfig.FIN_SANS_CASIER.get() && sess != null && !ServiceManager.carriesService(p) && foreign.isEmpty();
         return new View(pos, be.service(), sv == null ? "(aucun service)" : sv.name(), colorFor(be), state, admin,
                 ServiceManager.hasOverride(p.server, be.service()), d.pendingCount(p.getUUID()),
                 d.consigneCount(be.service()), free, foreign, msg, services);

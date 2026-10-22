@@ -73,61 +73,10 @@ public class CasierEvents {
         boolean second = tick % 20 == 0;
         for (ServerPlayer p : new ArrayList<>(server.getPlayerList().getPlayers())) {
             boolean in = ServiceManager.inSession(p);
-            if (in) guardContainers(p);
             if (!second) continue;
-            ServiceManager.purgeStray(p);
             if (in) ServiceManager.check(p);
             if (tick % 100 == 0) ServiceManager.deliverPending(p);
         }
-    }
-
-    /** L'équipement de service ne quitte jamais l'inventaire du joueur : coffre, ender chest, établi, cheval… tout conteneur est nettoyé. */
-    private void guardContainers(ServerPlayer p) {
-        AbstractContainerMenu m = p.containerMenu;
-        if (m == null || m == p.inventoryMenu || !CasierConfig.JET_INTERDIT.get()) return;
-        boolean moved = false;
-        for (Slot s : m.slots) {
-            if (s.container instanceof Inventory || s.getClass().getName().startsWith("top.theillusivec4.curios")) continue;   // le menu G (Curios) est le corps du joueur
-            ItemStack st = s.getItem();
-            if (!Marks.is(st)) continue;
-            s.set(ItemStack.EMPTY);
-            ItemStack back = st.copy();
-            p.getInventory().add(back);   // sans place : l'équipement se reprend gratuitement au casier
-            moved = true;
-        }
-        ItemStack carried = m.getCarried();
-        if (Marks.is(carried)) {
-            m.setCarried(ItemStack.EMPTY);
-            p.getInventory().add(carried.copy());
-            moved = true;
-        }
-        if (moved) {
-            m.broadcastChanges();
-            p.displayClientMessage(Component.literal("L'équipement de service ne se range pas dans un conteneur.").withStyle(ChatFormatting.RED), true);
-        }
-    }
-
-    /** Migration : les anciennes variantes de casier (police, pompier, ambulance) deviennent l'unique « casier_service » ; le service reste dans le bloc-entité. */
-    @SubscribeEvent
-    public void missing(net.minecraftforge.registries.MissingMappingsEvent e) {
-        for (var m : e.getMappings(net.minecraftforge.registries.ForgeRegistries.Keys.BLOCKS, MineNorthCasier.MOD_ID)) {
-            if (OLD.contains(m.getKey().getPath())) m.remap(ModBlocks.CASIER_SERVICE.get());
-        }
-        for (var m : e.getMappings(net.minecraftforge.registries.ForgeRegistries.Keys.ITEMS, MineNorthCasier.MOD_ID)) {
-            if (OLD.contains(m.getKey().getPath())) m.remap(ModItems.CASIER_SERVICE.get());
-        }
-    }
-
-    private static final java.util.Set<String> OLD = java.util.Set.of("casier_police", "casier_pompier", "casier_ambulance");
-
-    @SubscribeEvent
-    public void toss(ItemTossEvent e) {
-        ItemStack st = e.getEntity().getItem();
-        if (!Marks.is(st) || !CasierConfig.JET_INTERDIT.get()) return;
-        e.setCanceled(true);
-        Player p = e.getPlayer();
-        p.getInventory().add(st.copy());
-        p.displayClientMessage(Component.literal("Tu ne peux pas jeter ton équipement de service.").withStyle(ChatFormatting.RED), true);
     }
 
     @SubscribeEvent
@@ -136,11 +85,7 @@ public class CasierEvents {
         ItemEntity ie = e.getItem();
         ItemStack st = ie.getItem();
         boolean in = ServiceManager.inSession(p);
-        if (Marks.is(st)) {
-            if (!in || !p.getUUID().equals(Marks.owner(st))) e.setCanceled(true);
-            return;
-        }
-        if (!in) return;
+        if (!in || Marks.is(st)) return;
         String mode = CasierConfig.RAMASSAGE.get();
         if (mode.equals("LIBRE")) return;
         e.setCanceled(true);
@@ -163,36 +108,6 @@ public class CasierEvents {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void drops(LivingDropsEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) ServiceManager.onDeath(p, e.getDrops());
-    }
-
-    /** Curios ajoute ses objets aux drops après nous : second passage pour retirer l'équipement marqué du menu G. */
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void dropsLate(LivingDropsEvent e) {
-        if (e.getEntity() instanceof ServerPlayer p) ServiceManager.onDeath(p, e.getDrops());
-    }
-
-    @SubscribeEvent
-    public void interactEntity(PlayerInteractEvent.EntityInteract e) {
-        denyMarkedOnStorage(e, e.getTarget());
-    }
-
-    @SubscribeEvent
-    public void interactEntitySpecific(PlayerInteractEvent.EntityInteractSpecific e) {
-        denyMarkedOnStorage(e, e.getTarget());
-    }
-
-    private void denyMarkedOnStorage(PlayerInteractEvent e, Entity target) {
-        if (!(target instanceof ItemFrame) && !(target instanceof ArmorStand) && !(target instanceof Allay)) return;
-        if (!CasierConfig.JET_INTERDIT.get()) return;
-        if (Marks.is(e.getEntity().getMainHandItem()) || Marks.is(e.getEntity().getOffhandItem())) {
-            e.setCanceled(true);
-            if (!e.getLevel().isClientSide) e.getEntity().displayClientMessage(Component.literal("L'équipement de service ne se donne pas.").withStyle(ChatFormatting.RED), true);
-        }
-    }
-
     /** Accroupi avec un objet en main, le clic droit sur un casier ouvrirait sinon rien : on force l'ouverture (écran admin). */
     @SubscribeEvent
     public void rightClickBlock(PlayerInteractEvent.RightClickBlock e) {
@@ -210,13 +125,6 @@ public class CasierEvents {
         if (!CasierPerms.canPlaceOrBreak(e.getPlayer(), svc)) {
             e.setCanceled(true);
             e.getPlayer().displayClientMessage(Component.literal("Seuls un OP ou le chef du service peuvent retirer un casier.").withStyle(ChatFormatting.RED), true);
-        }
-    }
-
-    @SubscribeEvent
-    public void placeBlock(BlockEvent.EntityPlaceEvent e) {
-        if (e.getEntity() instanceof Player p && (Marks.is(p.getMainHandItem()) || Marks.is(p.getOffhandItem())) && !(e.getPlacedBlock().getBlock() instanceof CasierBlock)) {
-            e.setCanceled(true);
         }
     }
 }

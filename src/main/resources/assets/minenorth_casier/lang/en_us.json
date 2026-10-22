@@ -24,7 +24,7 @@
   "casier.btn.stuff": "Modifier le stuff",
   "casier.btn.consigne": "Consigne (%s)",
   "casier.btn.fichier": "Revenir au stuff du fichier",
-  "casier.tooltip.service": "Équipement de service : ni jeté, ni rangé, ni donné",
+  "casier.tooltip.service": "Équipement de service : à rendre au casier en fin de service",
   "menu.minenorth_casier.stuff": "Stuff : %s",
   "menu.minenorth_casier.consigne": "Consigne : %s",
   "menu.minenorth_casier.astuce": "Clic + objet = copie"

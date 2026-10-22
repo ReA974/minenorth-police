@@ -130,14 +130,13 @@ Secours, Entreprises, Curios et ZeroContact sont lus par l'API MineNorth ou par 
 2. **Prise d'équipement** : le joueur clique droit sur un casier de son service et « Prendre mon équipement » : **il prend son service directement au casier** (clé `prise_de_service_au_casier`, vraie par défaut ; la tablette et l'accueil marchent toujours).
    Le serveur **sauvegarde tout son inventaire civil** (inventaire, barre d'action, armure, seconde main, Curios si le mod est présent, pas l'XP) sur disque,
    le vide, puis lui donne le stuff du métier. Chaque objet donné est marqué (NBT `service`).
-3. **Pendant le service** : l'équipement marqué ne peut être ni jeté, ni rangé dans un coffre / ender chest / établi / cheval (le serveur le reprend dans le conteneur), ni posé dans un cadre,
-   ni donné : un objet marqué trouvé chez un autre joueur (ou chez quelqu'un qui n'est pas en service) est supprimé. Les objets ramassés vont dans le **sac de saisie** (config `ramassage`).
-   À la mort, l'équipement disparaît (il se reprend gratuitement au casier, ou est perdu selon la config), le sac de saisie va à la consigne, l'inventaire civil n'est jamais lâché.
+3. **Pendant le service** : l'équipement reçu est marqué (NBT `service`) mais **rien n'est verrouillé** : le joueur peut le jeter, le ranger dans un coffre, le donner, le déplacer, l'utiliser normalement.
+   Les objets ramassés suivent `ramassage` (libre par défaut ; `SAC` / `INTERDIT` en option). L'inventaire civil reste sauvegardé et n'est jamais lâché à la mort.
 4. **Fin de service** :
    - par le **casier** : l'écran liste ce qui sera déposé ; « Terminer mon service » dépose les affaires étrangères (consigne ou civil, selon la config), reprend le stuff,
      **restitue l'inventaire civil dans ses cases d'origine** puis coupe le service ;
-   - par la **tablette / l'accueil** : refusé avec « Passe par ton casier : tu as encore des affaires sur toi » s'il reste des affaires étrangères ;
-     si le joueur n'a plus rien d'étranger, c'est accepté et le serveur fait la restitution tout seul (config `fin_de_service_sans_casier_si_rien_d_etranger_sur_soi`, défaut vrai).
+   - par la **tablette / l'accueil** : refusé avec « Passe par ton casier : tu as encore des affaires sur toi » s'il lui reste sur lui du matériel de service ou des affaires étrangères ;
+     s'il les a jetés ou rangés ailleurs, aucun blocage ni sanction : c'est accepté et le serveur fait la restitution tout seul (config `fin_de_service_sans_casier_si_rien_d_etranger_sur_soi`, défaut vrai).
 5. **Écran admin du casier** (clic droit **accroupi**, OP ou chef du service) : changer le service relié, **modifier le stuff** (cases fantômes : on clique avec un objet pour le copier,
    rien n'est retiré de l'inventaire de l'admin), ouvrir la **consigne** (objets saisis et déposés, une personne à la fois), « Revenir au stuff du fichier ».
 

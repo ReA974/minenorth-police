@@ -248,6 +248,14 @@ public final class ServiceManager {
 
     public static boolean hasForeign(ServerPlayer p) { return !foreignLines(p).isEmpty(); }
 
+    /** Il lui reste sur lui du matériel de service : pour quitter son service il doit le rendre au casier (jeté ou rangé ailleurs, personne ne le lui reproche). */
+    public static boolean carriesService(ServerPlayer p) {
+        Inventory inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) if (Marks.is(inv.getItem(i))) return true;
+        for (Curios.SlotRef r : Curios.slots(p)) if (Marks.is(r.get())) return true;
+        return false;
+    }
+
     /**
      * Retire du joueur tout ce qui n'est pas de son métier : sac de saisie -> consigne, le reste -> consigne ou civil (config).
      * Les objets sont mis en lieu sûr dans les données AVANT la prochaine action.
@@ -317,7 +325,7 @@ public final class ServiceManager {
         ServiceDef sv = serviceOf(sess);
         if (sess == null) return null;
         if (!viaCasier && sv != null && d.casierCount(sv.id()) > 0) {
-            if (!CasierConfig.FIN_SANS_CASIER.get() || hasForeign(p)) return MSG_PASSE_PAR_CASIER;
+            if (!CasierConfig.FIN_SANS_CASIER.get() || hasForeign(p) || carriesService(p)) return MSG_PASSE_PAR_CASIER;
         }
         deposit(p, sess);
         List<ItemStack> overflow = new ArrayList<>();
@@ -433,52 +441,5 @@ public final class ServiceManager {
         if (sess == null) return;
         sess.putLong("Offline", System.currentTimeMillis());
         d.flush(p.server);
-    }
-
-    /** Mort en service : l'équipement marqué disparaît (selon la config), le sac de saisie va à la consigne, le civil n'est jamais lâché. */
-    public static void onDeath(ServerPlayer p, java.util.Collection<net.minecraft.world.entity.item.ItemEntity> drops) {
-        CasierData d = CasierData.get(p.server);
-        CompoundTag sess = d.sessions.get(p.getUUID());
-        if (sess == null) return;
-        String service = sess.getString("Service");
-        drops.removeIf(ie -> {
-            ItemStack st = ie.getItem();
-            if (!Marks.is(st)) return false;
-            if (SeizureBagItem.isBag(st)) {
-                List<ItemStack> in = new ArrayList<>();
-                SeizureBagItem.drain(st, in);
-                for (ItemStack x : in) addConsigne(d, service, x);
-            }
-            return true;
-        });
-        sess.putBoolean("Given", false);
-        sess.putBoolean("Lost", CasierConfig.MORT_EQUIPEMENT.get().equals("DETRUIT"));
-        d.flush(p.server);
-    }
-
-    /** Équipement de service trouvé là où il ne doit pas être (inventaire d'un autre, d'un joueur sans service) : supprimé. */
-    public static void purgeStray(ServerPlayer p) {
-        CasierData d = CasierData.get(p.server);
-        CompoundTag sess = d.sessions.get(p.getUUID());
-        boolean in = sess != null;
-        if (Curios.present()) {
-            for (Curios.SlotRef r : Curios.slots(p)) {
-                ItemStack c = r.get();
-                if (Marks.is(c) && (!in || !p.getUUID().equals(Marks.owner(c)))) r.set(ItemStack.EMPTY);
-            }
-        }
-        Inventory inv = p.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack st = inv.getItem(i);
-            if (st.isEmpty() || !st.hasTag()) continue;
-            if (Marks.is(st)) {
-                if (!in || !p.getUUID().equals(Marks.owner(st))) {
-                    MineNorthCasier.LOG.info("[Casier] Équipement de service retiré de l'inventaire de {} : {}", p.getGameProfile().getName(), st);
-                    inv.setItem(i, ItemStack.EMPTY);
-                }
-            } else if (in && Marks.strip(st.getTag())) {
-                p.displayClientMessage(Component.literal("L'équipement de service ne se range pas là.").withStyle(ChatFormatting.RED), true);
-            }
-        }
     }
 }
