@@ -37,12 +37,15 @@ public class RadarPlacerItem extends Item {
         return null;
     }
 
+    /** Poste de douane et borne fixe : infrastructure posée par les administrateurs (ou la police pour la douane). Barrière, plot et radar mobile : police seulement, OP compris. */
+    private static boolean isAdmin(ServerPlayer p) { return p.hasPermissions(2) || p.getAbilities().instabuild; }
+
     /** Accroupi + clic droit sur une barrière, un plot ou un poste de douane (un objet de pose en main) : le reprend, sans évènement de casse. */
     private static boolean pickUp(ServerPlayer p, ServerLevel level, BlockPos pos) {
         BlockState st = level.getBlockState(pos);
         ItemStack back = itemFor(st.getBlock());
         if (back == null) return false;
-        if (!(p.hasPermissions(2) || p.getAbilities().instabuild) && !PoliceTool.allowed(p)) return true;
+        if (!(st.getBlock() == fr.minenorth.police.block.ModBlocks.DOUANE.get() && isAdmin(p)) && !PoliceTool.allowed(p)) return true;
         level.removeBlockEntity(pos);
         level.setBlock(pos, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 3);
         if (!p.getAbilities().instabuild) p.getInventory().placeItemBackInInventory(back);
@@ -62,7 +65,7 @@ public class RadarPlacerItem extends Item {
                 p.displayClientMessage(Component.literal("§cCette borne est posée par les administrateurs."), true);
                 return;
             }
-        } else if (!(p.hasPermissions(2) || p.getAbilities().instabuild) && !PoliceTool.allowed(p)) return;
+        } else if (!(item.block.get() == fr.minenorth.police.block.ModBlocks.DOUANE.get() && isAdmin(p)) && !PoliceTool.allowed(p)) return;
         ServerLevel level = lv;
         BlockPos target = level.getBlockState(clicked).canBeReplaced() ? clicked : clicked.relative(face);
         Block b = item.block.get();

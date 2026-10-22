@@ -100,7 +100,7 @@ public class RadarBlock extends BaseEntityBlock {
         if (hand != InteractionHand.MAIN_HAND || !(player instanceof ServerPlayer p) || !(level.getBlockEntity(pos) instanceof RadarBlockEntity be)) {
             return InteractionResult.PASS;
         }
-        boolean police = PoliceService.rank(p) >= 0 || p.getAbilities().instabuild;
+        boolean police = PoliceService.rank(p) >= 0;
         // Borne fixe : posée et gérée par les admins seulement ; radar mobile : par les policiers.
         boolean manager = state.getBlock() instanceof RadarBorneBlock ? isAdmin(p) : police;
         if (!manager || p.isShiftKeyDown()) {
@@ -124,7 +124,7 @@ public class RadarBlock extends BaseEntityBlock {
         Level level = p.level();
         if (p.isSpectator() || !p.isAlive() || p.distanceToSqr(Vec3.atCenterOf(pos)) > 64 || !level.isLoaded(pos)) return;
         BlockState st = level.getBlockState(pos);
-        boolean police = PoliceService.rank(p) >= 0 || p.getAbilities().instabuild;
+        boolean police = PoliceService.rank(p) >= 0;
         if (!(st.getBlock() instanceof RadarBorneBlock ? isAdmin(p) : police)) return;
         if (!(st.getBlock() instanceof RadarBlock) || !(level.getBlockEntity(pos) instanceof RadarBlockEntity be)) return;
         if (!pickup) {
