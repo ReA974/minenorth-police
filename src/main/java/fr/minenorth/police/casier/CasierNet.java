@@ -38,7 +38,7 @@ public final class CasierNet {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthCasier.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
 
-    public static final int A_EQUIP = 1, A_RETAKE = 2, A_DEPOSIT = 3, A_FINISH = 4, A_CLAIM = 5,
+    public static final int A_EQUIP = 1, A_RETAKE = 2, A_DEPOSIT = 3, A_FINISH = 4, A_CLAIM = 5, A_PERSO = 6,
             A_NEXT_SERVICE = 10, A_STUFF = 11, A_CONSIGNE = 12, A_RESET_STUFF = 13, A_REFRESH = 20;
 
     public static void register() {
@@ -105,11 +105,7 @@ public final class CasierNet {
     }
 
     private static int colorFor(CasierBlockEntity be) {
-        var b = be.getBlockState().getBlock();
-        if (b == ModBlocks.CASIER_POLICE.get()) return COLORS[0];
-        if (b == ModBlocks.CASIER_POMPIER.get()) return COLORS[1];
-        if (b == ModBlocks.CASIER_AMBULANCE.get()) return COLORS[2];
-        return COLORS[3];
+        return switch (be.service()) { case "police" -> COLORS[0]; case "pompiers" -> COLORS[1]; default -> COLORS[3]; };
     }
 
     /** Clic droit sur un casier. adminMode = clic accroupi (réservé aux OP / chef de service). */
@@ -198,6 +194,12 @@ public final class CasierNet {
                     msg = e != null ? e : "Service terminé. Bon repos !";
                 }
             }
+            case A_PERSO -> {
+                View v = build(p, a.pos(), be, "");
+                if (v.state() == 0 || v.state() == 5) { msg = "Rangement indisponible."; break; }
+                openPerso(p);
+                return;
+            }
             case A_CLAIM -> {
                 int n = ServiceManager.deliverPending(p);
                 msg = n > 0 ? "Affaires rendues." : "Pas assez de place dans ton inventaire.";
@@ -256,11 +258,28 @@ public final class CasierNet {
                 Component.translatable("menu.minenorth_casier.stuff", sv.name())), b -> { b.writeBoolean(true); b.writeVarInt(3); b.writeUtf(sv.id()); });
     }
 
+    /** Rangement personnel : 27 cases à soi, chacun y met ce qu'il veut (sauf l'équipement de service), à tout moment. */
+    private static void openPerso(ServerPlayer p) {
+        CasierData d = CasierData.get(p.server);
+        List<ItemStack> list = d.lockers.computeIfAbsent(p.getUUID(), k -> new ArrayList<>());
+        while (list.size() < 27) list.add(ItemStack.EMPTY);
+        SimpleContainer c = new SimpleContainer(27);
+        for (int i = 0; i < 27; i++) c.setItem(i, list.get(i));
+        c.addListener(cc -> {
+            List<ItemStack> l = d.lockers.computeIfAbsent(p.getUUID(), k -> new ArrayList<>());
+            while (l.size() < 27) l.add(ItemStack.EMPTY);
+            for (int k = 0; k < 27; k++) l.set(k, cc.getItem(k));
+            d.setDirty();
+        });
+        NetworkHooks.openScreen(p, new SimpleMenuProvider((id, inv, pl) -> new ServiceMenu(MineNorthCasier.PERSO_MENU.get(), id, inv, c, false, 3, ""),
+                Component.translatable("menu.minenorth_casier.perso")), b -> { b.writeBoolean(false); b.writeVarInt(3); b.writeUtf(""); });
+    }
+
     private static boolean openConsigne(ServerPlayer p, ServiceDef sv) {
         UUID holder = CONSIGNE_LOCK.get(sv.id());
         if (holder != null && !holder.equals(p.getUUID())) {
             ServerPlayer other = p.server.getPlayerList().getPlayer(holder);
-            if (other != null && other.containerMenu instanceof ServiceMenu m && !m.ghost && m.service.equals(sv.id())) return false;
+            if (other != null && other.containerMenu instanceof ServiceMenu m && !m.ghost && !m.perso && m.service.equals(sv.id())) return false;
         }
         CasierData d = CasierData.get(p.server);
         List<ItemStack> list = d.consigne(sv.id());
@@ -281,7 +300,7 @@ public final class CasierNet {
 
     static void menuClosed(Player p, ServiceMenu m) {
         if (p instanceof ServerPlayer sp) {
-            if (!m.ghost && p.getUUID().equals(CONSIGNE_LOCK.get(m.service))) CONSIGNE_LOCK.remove(m.service);
+            if (!m.ghost && !m.perso && p.getUUID().equals(CONSIGNE_LOCK.get(m.service))) CONSIGNE_LOCK.remove(m.service);
             CasierData.get(sp.server).flush(sp.server);
         }
     }

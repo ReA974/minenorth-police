@@ -79,7 +79,9 @@ Aucune commande : tout se fait au clic droit avec l'objet en main (onglet créat
 **Menotter** : clic droit avec les menottes sur un joueur à moins de `menottes_portee` blocs. Immédiat si la cible est inconsciente (mod Secours), a les mains en l'air / est à genoux / assise (emote « Se rendre », « Prier », « S'asseoir par terre » du mod Emotes, liste `menottes_emotes_reddition`). Sinon : pose de `menottes_pose_secondes` s (barre dans la barre d'action) ; la cible échappe si elle s'éloigne de `menottes_pose_deplacement_max` blocs, et si elle tient une arme (liste du détecteur de métaux) sans être ralentie (taser), la pose est refusée.
 Un menotté ne peut plus attaquer, utiliser d'objet, casser/poser, ouvrir de coffre, jeter d'objet, courir ni sauter ; il est ralenti (`menottes_ralentissement_pourcent`). Les menottes sont visibles sur lui, bras joints dans le dos (la pose passe par le crochet `EmoteModel.POST` du mod Emotes : sans le mod Emotes, pas de pose mais menottes visibles ; le modèle du joueur n'est jamais remplacé). Libération automatique après `menottes_liberation_minutes` (10 par défaut), à la mort (`menottes_liberer_mort`), à la déconnexion si `menottes_liberer_deconnexion`, et à la mise en garde à vue / prison.
 
-**Fouille** : clic droit **accroupi** sur un menotté. Réservée aux policiers (et au ravisseur d'un captif aux menottes artisanales si `fouille_ravisseurs`). Écran de fouille : inventaire complet (armure et main gauche compris), objets illégaux (`fouille_objets_illegaux` : drogues, argent sale, faux plaques, outils de crochetage, armes TACZ...) entourés de rouge. Un clic sur un objet lance son retrait (`fouille_delai_secondes` s par objet, second clic = annule) : l'objet passe dans l'inventaire du fouilleur. La victime voit « Vous êtes fouillé ». Un policier voit ses saisies inscrites au casier (SAISIE, `fouille_inscrire_casier`). Journal serveur : `config/minenorth_police_fouilles.log`.
+**Menu du prisonnier** : shift + clic droit sur un menotté ouvre un menu (garde à vue, prison, monter en voiture / faire sortir, fouille) ; ces actions ne sont plus dans la tablette (qui garde les amendes, casier, etc.). Tout est revérifié côté serveur, mêmes règles pour les OP.
+
+**Fouille** : bouton « Fouille » du menu. Réservée aux policiers (et au ravisseur d'un captif aux menottes artisanales si `fouille_ravisseurs`). Écran de fouille : inventaire complet (armure et main gauche compris), objets illégaux (`fouille_objets_illegaux` : drogues, argent sale, faux plaques, outils de crochetage, armes TACZ...) entourés de rouge. Un clic sur un objet lance son retrait (`fouille_delai_secondes` s par objet, second clic = annule) : l'objet passe dans l'inventaire du fouilleur. La victime voit « Vous êtes fouillé ». Un policier voit ses saisies inscrites au casier (SAISIE, `fouille_inscrire_casier`). Journal serveur : `config/minenorth_police_fouilles.log`.
 
 **Escorte** : clic droit à main vide sur un menotté = il vous suit à `escorte_distance` blocs (traction bornée à `escorte_vitesse_max`, relâché au-delà de `escorte_distance_max` ou s'il est bloqué). Nouveau clic = relâche. Clic droit sur un véhicule MTS en escortant (ou touche **U**, réglable : « Menotté : monter / faire descendre ») = installe le captif sur une place passager libre ; il ne peut pas en descendre (il est remis à sa place) ; la même touche (ou un policier) le fait descendre.
 
@@ -108,8 +110,10 @@ Onglet **TRANSPORT** du dossier : **EMBARQUER LE SUSPECT** l'installe sur un si�
 - Tablette : bouton **FOURRIÈRE** dans la barre du haut : même menu pour le véhicule visé (ou le plus proche à 8 blocs).
 - Le menu est celui du mod Véhicules (`Impound.openPoliceMenu`, par réflexion) ; le véhicule doit avoir un propriétaire enregistré.
 
-## Casier de service (fusionné dans ce mod, 22/10)
-
+## Casier de service (fusionné dans ce mod, 22/10)
+
+
+
 **Ex-mod `minenorth-casier`, maintenant dans `minenorth-police` : supprimer `minenorth-casier-*.jar`.** Les noms de registre restent sous l'espace de noms `minenorth_casier` (blocs, objets, menus), la sauvegarde monde reste `minenorth_casier` et la config reste `config/minenorth_casier-common.toml` : rien ne se perd. Le contrôle « passe par ton casier » est un appel direct (Secours l'appelle par réflexion). Aucun paquet ajouté au canal Police : le casier garde son canal `minenorth_casier:network`. Fichiers dans `fr.minenorth.police.casier`, outils dans `tools/gen_casier.py`.
 
 Mod Forge 1.20.1 (Mojang mappings, JDK 17) pour MineNorthRP. Les métiers **police** et **pompiers / secours** (et d'autres services reliés à une entreprise) ont un

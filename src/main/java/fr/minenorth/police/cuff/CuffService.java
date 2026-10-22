@@ -223,7 +223,7 @@ public final class CuffService {
         if (it == ModItems.CLE_MENOTTES.get()) return keyAction(actor, target, ts);
         if (it == ModItems.SAC_JUTE.get()) return hoodAction(actor, target, st, ts);
         if (!cuffed) return ts != null && ts.hooded && st.isEmpty() && unhood(actor, target, ts);
-        if (actor.isShiftKeyDown()) return searchAction(actor, target, ts);
+        if (actor.isShiftKeyDown()) return openMenu(actor, target, ts, "", true);
         if (st.isEmpty()) return escortAction(actor, target, ts);
         return false;
     }
@@ -407,6 +407,72 @@ public final class CuffService {
         if (!near(actor, target, cfg.fouille_portee)) { say(actor, "§cApprochez-vous (moins de " + (int) cfg.fouille_portee + " blocs)."); return true; }
         SearchMenu.open(actor, target, police);
         return true;
+    }
+
+    // ------------------------------------------------------------------ menu du menotté (shift + clic droit)
+    private static boolean canSearch(ServerPlayer actor, State ts) {
+        PoliceConfig cfg = PoliceConfig.get();
+        return policeRank(actor) || (cfg.fouille_ravisseurs && ts.type == ARTISANAL && actor.getUUID().equals(ts.captor));
+    }
+
+    private static boolean openMenu(ServerPlayer actor, ServerPlayer target, State ts, String msg, boolean ok) {
+        PoliceConfig cfg = PoliceConfig.get();
+        if (!handler(actor, ts)) { say(actor, "§cVous n'avez pas le droit de manipuler ce prisonnier."); return true; }
+        if (!near(actor, target, cfg.fouille_portee)) { say(actor, "§cApprochez-vous."); return true; }
+        int rank = PoliceService.rank(actor);
+        ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor), new ModNetwork.CuffMenuOpenPacket(
+                target.getUUID(), name(actor.server, target.getUUID()), canSearch(actor, ts), rank >= 0,
+                rank >= 0 && rank <= fr.minenorth.police.data.PoliceData.OFFICIER, target.isPassenger(),
+                cfg.garde_a_vue_max_minutes, cfg.prison_max_minutes, msg, ok));
+        return true;
+    }
+
+    /** Action du menu : tout est revérifié (droits, distance, état menotté). Les OP n'ont aucun droit particulier. */
+    public static void menuAction(ServerPlayer actor, int action, UUID targetId, String reason, int minutes) {
+        PoliceConfig cfg = PoliceConfig.get();
+        if (!cfg.menottes_actives || !actor.isAlive() || actor.isSpectator() || isCuffed(actor.getUUID())) return;
+        ServerPlayer target = online(actor.server, targetId);
+        State ts = STATES.get(targetId);
+        if (target == null || ts == null || !ts.cuffed || target == actor) return;
+        if (!handler(actor, ts)) return;
+        if (!near(actor, target, cfg.fouille_portee + 1)) { openMenu(actor, target, ts, "Trop loin du prisonnier.", false); return; }
+        switch (action) {
+            case 0 -> {
+                if (!canSearch(actor, ts)) { openMenu(actor, target, ts, "Fouille réservée aux policiers (ou au ravisseur, menottes artisanales).", false); return; }
+                SearchMenu.open(actor, target, policeRank(actor));
+            }
+            case 1 -> {
+                if (target.isPassenger()) { openMenu(actor, target, ts, "Il est déjà dans un véhicule.", false); return; }
+                StringBuilder sb = new StringBuilder();
+                boolean ok = policeRank(actor) && PoliceService.boardMenu(actor, targetId, true, sb);
+                if (!ok) {
+                    Entity veh = Mts.nearestWithPassengerSeat(actor, 8);
+                    if (veh == null) { openMenu(actor, target, ts, "Aucun véhicule avec place passager à moins de 8 blocs.", false); return; }
+                    stopEscort(target, "installé dans un véhicule");
+                    if (!Mts.seatPassenger(target, veh)) { openMenu(actor, target, ts, "Impossible de l'installer (siège indisponible).", false); return; }
+                    SEAT.put(targetId, veh.getUUID());
+                    tell(target, "§cVous êtes installé dans le véhicule. Vous ne pouvez pas en sortir.");
+                    sb = new StringBuilder("Installé dans le véhicule.");
+                }
+                openMenu(actor, target, ts, sb.toString(), true);
+            }
+            case 2 -> {
+                if (!target.isPassenger()) { openMenu(actor, target, ts, "Il n'est pas dans un véhicule.", false); return; }
+                SEAT.remove(targetId);
+                PoliceService.releaseHold(actor.server, targetId);
+                if (target.isPassenger()) Mts.unseat(target);
+                tell(target, "§eVous êtes sorti du véhicule.");
+                openMenu(actor, target, ts, "Il est sorti du véhicule.", true);
+            }
+            case 3, 4 -> {
+                if (!policeRank(actor)) { openMenu(actor, target, ts, "Réservé à la police.", false); return; }
+                fr.minenorth.police.JailService.Result r = fr.minenorth.police.JailService.jail(actor, targetId, action == 3 ? 0 : 1, minutes, reason == null ? "" : reason.trim());
+                if (r.ok()) { say(actor, "§a" + r.msg()); actor.closeContainer(); ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor),
+                        new ModNetwork.CuffMenuOpenPacket(targetId, "", false, false, false, false, 0, 0, "", true)); }
+                else openMenu(actor, target, ts, r.msg(), false);
+            }
+            default -> {}
+        }
     }
 
     // ------------------------------------------------------------------ escorte

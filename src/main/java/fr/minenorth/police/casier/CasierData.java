@@ -31,6 +31,8 @@ public class CasierData extends SavedData {
     public final Map<String, List<ItemStack>> consigne = new HashMap<>();
     /** Affaires à rendre à un joueur dès qu'il a de la place (inventaire plein à la restitution). */
     public final Map<UUID, List<ItemStack>> pending = new HashMap<>();
+    /** Rangement personnel de chaque joueur (27 cases). */
+    public final Map<UUID, List<ItemStack>> lockers = new HashMap<>();
     /** Casiers posés : « dimension;x;y;z » -> service. */
     public final Map<String, String> casiers = new LinkedHashMap<>();
     /** Services d'entreprise : agents en service. */
@@ -86,6 +88,14 @@ public class CasierData extends SavedData {
                 d.pending.put(UUID.fromString(k), l);
             } catch (IllegalArgumentException ignored) {}
         }
+        CompoundTag lk = t.getCompound("lockers");
+        for (String k : lk.getAllKeys()) {
+            try {
+                List<ItemStack> l = new ArrayList<>();
+                readList(lk.getList(k, Tag.TAG_COMPOUND), l);
+                d.lockers.put(UUID.fromString(k), l);
+            } catch (IllegalArgumentException ignored) {}
+        }
         CompoundTag ca = t.getCompound("casiers");
         for (String k : ca.getAllKeys()) d.casiers.put(k, ca.getString(k));
         ListTag cd = t.getList("customDuty", Tag.TAG_STRING);
@@ -105,6 +115,9 @@ public class CasierData extends SavedData {
         CompoundTag pe = new CompoundTag();
         pending.forEach((k, v) -> { if (!v.isEmpty()) pe.put(k.toString(), writeList(v)); });
         t.put("pending", pe);
+        CompoundTag lk = new CompoundTag();
+        lockers.forEach((k, v) -> { if (v.stream().anyMatch(s -> !s.isEmpty())) lk.put(k.toString(), writeList(v)); });
+        t.put("lockers", lk);
         CompoundTag ca = new CompoundTag();
         casiers.forEach(ca::putString);
         t.put("casiers", ca);

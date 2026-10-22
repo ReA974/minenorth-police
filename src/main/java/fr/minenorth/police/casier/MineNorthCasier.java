@@ -24,6 +24,9 @@ public class MineNorthCasier {
     public static final RegistryObject<MenuType<ServiceMenu>> CONSIGNE_MENU = MENUS.register("consigne",
             () -> IForgeMenuType.create((id, inv, buf) -> ServiceMenu.fromBuffer(MineNorthCasier.CONSIGNE_MENU.get(), id, inv, buf)));
 
+    public static final RegistryObject<MenuType<ServiceMenu>> PERSO_MENU = MENUS.register("perso",
+            () -> IForgeMenuType.create((id, inv, buf) -> ServiceMenu.fromBuffer(MineNorthCasier.PERSO_MENU.get(), id, inv, buf)));
+
     public static void init(IEventBus bus) {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CasierConfig.SPEC, "minenorth_casier-common.toml");
         ModBlocks.register(bus);

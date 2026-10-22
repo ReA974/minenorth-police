@@ -15,13 +15,11 @@ public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MineNorthCasier.MOD_ID);
     public static final DeferredRegister<BlockEntityType<?>> BES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MineNorthCasier.MOD_ID);
 
-    public static final RegistryObject<Block> CASIER_POLICE = BLOCKS.register("casier_police", () -> new CasierBlock("police"));
-    public static final RegistryObject<Block> CASIER_POMPIER = BLOCKS.register("casier_pompier", () -> new CasierBlock("pompiers"));
-    public static final RegistryObject<Block> CASIER_AMBULANCE = BLOCKS.register("casier_ambulance", () -> new CasierBlock("pompiers"));
+    /** Un seul casier : le service est choisi à la pose (chef du service) ou dans l'écran admin. Les anciennes variantes sont remplacées par ce bloc (CasierEvents.missing). */
     public static final RegistryObject<Block> CASIER_SERVICE = BLOCKS.register("casier_service", () -> new CasierBlock(""));
 
     public static final RegistryObject<BlockEntityType<CasierBlockEntity>> CASIER_BE = BES.register("casier",
-            () -> BlockEntityType.Builder.of(CasierBlockEntity::new, CASIER_POLICE.get(), CASIER_POMPIER.get(), CASIER_AMBULANCE.get(), CASIER_SERVICE.get()).build(null));
+            () -> BlockEntityType.Builder.of(CasierBlockEntity::new, CASIER_SERVICE.get()).build(null));
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);

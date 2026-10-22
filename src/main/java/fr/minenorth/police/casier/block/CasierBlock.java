@@ -70,7 +70,9 @@ public class CasierBlock extends Block implements EntityBlock {
     public void setPlacedBy(Level lv, BlockPos pos, BlockState st, @Nullable LivingEntity who, ItemStack stack) {
         lv.setBlock(pos.above(), st.setValue(HALF, DoubleBlockHalf.UPPER), 3);
         if (!lv.isClientSide && lv.getBlockEntity(pos) instanceof CasierBlockEntity be) {
-            be.setService(defaultService);
+            String svc = defaultService;
+            if (who instanceof ServerPlayer sp && !CasierPerms.isOp(sp)) { String c = CasierPerms.chiefService(sp); if (c != null) svc = c; }
+            be.setService(svc);
             be.register();
         }
     }

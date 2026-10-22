@@ -56,7 +56,7 @@ public final class ModNetwork {
             A_UNCUFF = 30;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "10";
+    private static final String PROTOCOL = "11";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -74,6 +74,8 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, HerseUsePacket.class, HerseUsePacket::encode, HerseUsePacket::decode, HerseUsePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, CuffSyncPacket.class, CuffSyncPacket::encode, CuffSyncPacket::decode, CuffSyncPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, CuffKeyPacket.class, (p, b) -> {}, b -> new CuffKeyPacket(), CuffKeyPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, CuffMenuOpenPacket.class, CuffMenuOpenPacket::encode, CuffMenuOpenPacket::decode, CuffMenuOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
+        CHANNEL.registerMessage(id++, CuffMenuActionPacket.class, CuffMenuActionPacket::encode, CuffMenuActionPacket::decode, CuffMenuActionPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         id = PhoneNet.register(CHANNEL, id);   // application « téléphone » (état + ouverture)
     }
 
@@ -202,6 +204,33 @@ public final class ModNetwork {
     public record CuffKeyPacket() {
         static void handle(CuffKeyPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.vehicleKey(sp); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Serveur -> client : ouvre (ou met à jour) le menu du menotté (shift + clic droit). Les droits affichés ne sont qu'indicatifs : le serveur revérifie. */
+    public record CuffMenuOpenPacket(UUID target, String name, boolean search, boolean jail, boolean prison, boolean seated, int gavMax, int prisonMax,
+                                     String msg, boolean ok) {
+        static void encode(CuffMenuOpenPacket p, FriendlyByteBuf b) {
+            b.writeUUID(p.target); b.writeUtf(p.name, 64); b.writeBoolean(p.search); b.writeBoolean(p.jail); b.writeBoolean(p.prison);
+            b.writeBoolean(p.seated); b.writeVarInt(p.gavMax); b.writeVarInt(p.prisonMax); b.writeUtf(p.msg, 160); b.writeBoolean(p.ok);
+        }
+        static CuffMenuOpenPacket decode(FriendlyByteBuf b) {
+            return new CuffMenuOpenPacket(b.readUUID(), b.readUtf(64), b.readBoolean(), b.readBoolean(), b.readBoolean(), b.readBoolean(),
+                    b.readVarInt(), b.readVarInt(), b.readUtf(160), b.readBoolean());
+        }
+        static void handle(CuffMenuOpenPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> fr.minenorth.police.client.CuffMenuScreen.open(p)));
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : action du menu du menotté (0 fouille, 1 monter en voiture, 2 faire sortir, 3 garde à vue, 4 prison). Tout est revérifié. */
+    public record CuffMenuActionPacket(int action, UUID target, String reason, int minutes) {
+        static void encode(CuffMenuActionPacket p, FriendlyByteBuf b) { b.writeVarInt(p.action); b.writeUUID(p.target); b.writeUtf(p.reason, 96); b.writeVarInt(p.minutes); }
+        static CuffMenuActionPacket decode(FriendlyByteBuf b) { return new CuffMenuActionPacket(b.readVarInt(), b.readUUID(), b.readUtf(96), b.readVarInt()); }
+        static void handle(CuffMenuActionPacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.menuAction(sp, p.action, p.target, p.reason, p.minutes); });
             c.get().setPacketHandled(true);
         }
     }

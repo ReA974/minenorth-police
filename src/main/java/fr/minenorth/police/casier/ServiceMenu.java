@@ -17,6 +17,8 @@ import net.minecraft.world.item.ItemStack;
  */
 public class ServiceMenu extends AbstractContainerMenu {
     public final boolean ghost;
+    /** Rangement personnel du joueur. */
+    public final boolean perso;
     public final int rows;
     public final String service;
     private final Container container;
@@ -24,6 +26,7 @@ public class ServiceMenu extends AbstractContainerMenu {
     public ServiceMenu(MenuType<?> type, int id, Inventory inv, Container container, boolean ghost, int rows, String service) {
         super(type, id);
         this.ghost = ghost;
+        this.perso = type == MineNorthCasier.PERSO_MENU.get();
         this.rows = rows;
         this.service = service;
         this.container = container;
@@ -103,7 +106,7 @@ public class ServiceMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player p) {
         if (p.level().isClientSide) return true;
-        return p.isAlive() && CasierPerms.isAdmin(p, service);
+        return p.isAlive() && (perso || CasierPerms.isAdmin(p, service));
     }
 
     @Override

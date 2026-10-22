@@ -448,6 +448,13 @@ public final class PoliceService {
         if (on != null && Mts.isSeated(on)) Mts.unseat(on);
     }
 
+    /** Menu du menotté (shift + clic droit) : embarque / fait sortir un suspect du véhicule de police. Renvoie le résultat, message dans msg. */
+    public static boolean boardMenu(ServerPlayer p, UUID t, boolean in, StringBuilder msg) {
+        R r = board(p, PoliceData.get(p.server), t, in);
+        msg.append(r.msg());
+        return r.ok();
+    }
+
     private static R board(ServerPlayer p, PoliceData d, UUID t, boolean in) {
         MinecraftServer s = p.server;
         ServerPlayer on = s.getPlayerList().getPlayer(t);
@@ -613,16 +620,13 @@ public final class PoliceService {
             case ModNetwork.A_OPEN -> { if (known) sendDossier(p, t, "", true); }
             case ModNetwork.A_REQUESTS -> sendRequests(p, "", true);
             case ModNetwork.A_ROSTER -> { if (rank == PoliceData.COMMISSAIRE) sendRoster(p, "", true); }
-            case ModNetwork.A_INVENTORY -> { if (known) sendInventory(p, t, "", true); }
             case ModNetwork.A_FINE -> { if (known) { R r = fine(p, rank, d, t, clean(k.a()), k.b(), k.n()); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_RECORD -> { if (known) { R r = addRecord(p, rank, d, t, k.n(), clean(k.a())); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DELETE -> { if (known) { R r = deleteRecord(rank, d, t, k.n()); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_WANTED -> { if (known) { R r = wanted(p, rank, d, t, clean(k.a())); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_REQUEST -> { if (known) { R r = request(p, rank, d, t, k.n(), clean(k.a())); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DECIDE -> { R r = decide(p, rank, d, k.n(), k.m() == 1); sendRequests(p, r.msg(), r.ok()); }
-            case ModNetwork.A_SEIZE -> { if (known) { R r = seize(p, d, t, k.n()); sendInventory(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_GRADE -> { R r = grade(p, rank, d, t, clean(k.a()), k.n()); sendRoster(p, r.msg(), r.ok()); }
-            case ModNetwork.A_JAIL -> { if (known) { JailService.Result r = JailService.jail(p, t, k.n(), k.m(), clean(k.a())); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_RELEASE -> {
                 if (!known) break;
                 if (rank > PoliceData.OFFICIER) { sendDossier(p, t, "Seuls les Officiers et le Commissaire peuvent libérer un détenu.", false); break; }
@@ -637,7 +641,6 @@ public final class PoliceService {
             }
             case ModNetwork.A_ALERTS -> sendAlerts(p, "", true);
             case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
-            case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DUTY -> {
                 if (onDuty(p.getUUID()) && !fr.minenorth.police.casier.ServiceManager.allowLeave(p)) { reopen(p, k.n(), rank); break; }
                 setDuty(s, p.getUUID(), !onDuty(p.getUUID()));

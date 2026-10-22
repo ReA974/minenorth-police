@@ -43,9 +43,9 @@ public final class CasierConfig {
                 "« Passe par ton casier : tu as encore des affaires sur toi ».")
                 .define("fin_de_service_sans_casier_si_rien_d_etranger_sur_soi", true);
         PRISE_AU_CASIER = b.comment(
-                "true  : un membre du service HORS service peut prendre son service directement en ouvrant le casier.",
+                "true  : un membre du service peut prendre son service directement en ouvrant le casier (défaut).",
                 "false : il doit d'abord prendre son service (tablette / accueil), puis aller au casier.")
-                .define("prise_de_service_au_casier", false);
+                .define("prise_de_service_au_casier", true);
         EXPIRATION_HORS_LIGNE = b.comment(
                 "Minutes hors ligne au bout desquelles un service est considéré comme expiré : à la reconnexion, le serveur reprend le stuff",
                 "et rend l'inventaire civil automatiquement. 0 = jamais (le joueur reprend son service tel quel, quel que soit le temps passé).")
@@ -69,13 +69,13 @@ public final class CasierConfig {
                 "SAC      : l'objet va dans son sac de saisie (preuves, saisies) ; sans sac sur lui, il ne peut pas ramasser.",
                 "INTERDIT : il ne ramasse rien.",
                 "LIBRE    : il ramasse normalement (il devra tout déposer au casier à la fin du service).")
-                .define("ramassage", "SAC", o -> o instanceof String s && List.of("SAC", "INTERDIT", "LIBRE").contains(s));
+                .define("ramassage", "LIBRE", o -> o instanceof String s && List.of("SAC", "INTERDIT", "LIBRE").contains(s));
         SAC_CAPACITE = b.comment("Nombre de piles d'objets que contient un sac de saisie.")
                 .defineInRange("sac_de_saisie_capacite", 27, 1, 120);
         ETRANGERS_VERS = b.comment("Où vont les objets étrangers déposés au casier (hors contenu du sac de saisie, qui va toujours à la consigne) ?",
-                "CONSIGNE : à la consigne du service (le chef peut les rendre). Recommandé : ce sont presque toujours des saisies.",
-                "CIVIL    : rendus au joueur avec son inventaire civil.")
-                .define("objets_etrangers_deposes_vers", "CONSIGNE", o -> o instanceof String s && List.of("CONSIGNE", "CIVIL").contains(s));
+                "CONSIGNE : à la consigne du service (le chef peut les rendre) : pour un serveur où tout objet ramassé en service est une saisie.",
+                "CIVIL    : rendus au joueur avec son inventaire civil (défaut : on ne bloque pas l'inventaire du joueur).")
+                .define("objets_etrangers_deposes_vers", "CIVIL", o -> o instanceof String s && List.of("CONSIGNE", "CIVIL").contains(s));
         MORT_EQUIPEMENT = b.comment("À la mort en service :",
                 "CASIER  : l'équipement de service disparaît du joueur, il peut le reprendre gratuitement au casier (« Reprendre mon équipement »).",
                 "DETRUIT : l'équipement est perdu pour cette prise de service (il devra terminer son service puis le reprendre).",

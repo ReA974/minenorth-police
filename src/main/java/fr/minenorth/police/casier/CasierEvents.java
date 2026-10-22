@@ -59,6 +59,7 @@ public class CasierEvents {
         CasierData d = CasierData.get(e.server());
         boolean any = d.sessions.remove(e.player()) != null;
         any |= d.pending.remove(e.player()) != null;
+        any |= d.lockers.remove(e.player()) != null;
         any |= d.customDuty.remove(e.player());
         if (any) { d.flush(e.server()); e.cleaned("Casier"); }
     }
@@ -105,6 +106,19 @@ public class CasierEvents {
             p.displayClientMessage(Component.literal("L'équipement de service ne se range pas dans un conteneur.").withStyle(ChatFormatting.RED), true);
         }
     }
+
+    /** Migration : les anciennes variantes de casier (police, pompier, ambulance) deviennent l'unique « casier_service » ; le service reste dans le bloc-entité. */
+    @SubscribeEvent
+    public void missing(net.minecraftforge.registries.MissingMappingsEvent e) {
+        for (var m : e.getMappings(net.minecraftforge.registries.ForgeRegistries.Keys.BLOCKS, MineNorthCasier.MOD_ID)) {
+            if (OLD.contains(m.getKey().getPath())) m.remap(ModBlocks.CASIER_SERVICE.get());
+        }
+        for (var m : e.getMappings(net.minecraftforge.registries.ForgeRegistries.Keys.ITEMS, MineNorthCasier.MOD_ID)) {
+            if (OLD.contains(m.getKey().getPath())) m.remap(ModItems.CASIER_SERVICE.get());
+        }
+    }
+
+    private static final java.util.Set<String> OLD = java.util.Set.of("casier_police", "casier_pompier", "casier_ambulance");
 
     @SubscribeEvent
     public void toss(ItemTossEvent e) {

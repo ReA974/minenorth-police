@@ -236,8 +236,8 @@ public class PoliceScreen extends Screen {
 
     // ---------- dossier d'un citoyen
     private void buildDossier(Dossier d, int x, int w) {
-        String[] tabs = {"Fiche", "Casier", "Permis / véhicules", "Actions", "Transport"};
-        int[] widths = {54, 62, 124, 66, 76};
+        String[] tabs = {"Fiche", "Casier", "Permis / véhicules", "Actions"};
+        int[] widths = {54, 62, 124, 66};
         int tx = x;
         for (int i = 0; i < tabs.length; i++) {
             final int t = i;
@@ -248,21 +248,7 @@ public class PoliceScreen extends Screen {
         if (tab == 1) buildCasier(d, x, y0, w);
         else if (tab == 2) buildPermis(d, x, y0, w);
         else if (tab == 3) buildActions(d, x, y0, w);
-        else if (tab == 4) buildTransport(d, x, y0, w);
         else buildFiche(d, x, y0, w);
-    }
-
-    // ---------- transport : installer le suspect à l'arrière d'un véhicule de police
-    private void buildTransport(Dossier d, int x, int y0, int w) {
-        label("TRANSPORT À L'ARRIÈRE D'UN VÉHICULE DE POLICE", x, y0, MineNorthStyle.BLUE);
-        label(d.boarded() ? "Ce citoyen est embarqué : s'il quitte son siège, il y est remis."
-                : "Le suspect doit être à portée de vous et un véhicule de police avec place arrière à moins de 8 blocs.", x, y0 + 14, MineNorthStyle.TEXT, w);
-        label(d.online() ? (d.near() ? "Suspect : à portée." : "Suspect : trop loin.") : "Suspect : hors ligne.", x, y0 + 30, d.near() ? MineNorthStyle.OK : MineNorthStyle.ALERT);
-        label(d.vehicleNear() ? "Véhicule : place arrière disponible." : "Véhicule : aucun à proximité.", x, y0 + 44, d.vehicleNear() ? MineNorthStyle.OK : MineNorthStyle.ALERT);
-        int bw = (w - 8) / 2;
-        btn(x, y0 + 70, bw, 24, "EMBARQUER LE SUSPECT", MineNorthStyle.PINK, () -> send(ModNetwork.A_BOARD, d.id(), "", "", 1, 0))
-                .enabled(!d.boarded() && d.online() && d.near() && d.vehicleNear());
-        btn(x + bw + 8, y0 + 70, bw, 24, "FAIRE SORTIR", MineNorthStyle.GREEN, () -> send(ModNetwork.A_BOARD, d.id(), "", "", 0, 0)).enabled(d.boarded());
     }
 
     private void buildFiche(Dossier d, int x, int y0, int w) {
@@ -389,24 +375,17 @@ public class PoliceScreen extends Screen {
         btn(rx, y0 + 100, half, 20, chief ? "ANNULER SON PERMIS" : "DEMANDER L'ANNULATION DU PERMIS", MineNorthStyle.CYAN,
                 () -> send(ModNetwork.A_REQUEST, d.id(), bReason.getValue(), "", 1, 0)).enabled(driving);
 
-        btn(x, y0 + 124, half, 20, d.near() ? "SAISIR DES OBJETS" : "SAISIE : CITOYEN TROP LOIN", MineNorthStyle.PINK,
-                () -> { keep(); send(ModNetwork.A_INVENTORY, d.id(), "", "", 0, 0); }).enabled(d.near());
-        btn(rx, y0 + 124, half, 20, d.wantedReason().isEmpty() ? "LANCER UN AVIS DE RECHERCHE" : "LEVER L'AVIS DE RECHERCHE",
+        btn(x, y0 + 124, half, 20, d.wantedReason().isEmpty() ? "LANCER UN AVIS DE RECHERCHE" : "LEVER L'AVIS DE RECHERCHE",
                 d.wantedReason().isEmpty() ? MineNorthStyle.PINK : MineNorthStyle.DARK,
                 () -> send(ModNetwork.A_WANTED, d.id(), bReason.getValue(), "", 0, 0)).enabled(officer);
 
-        // Garde à vue (tous grades) / prison (Officier+) ; si le citoyen est déjà détenu : temps restant et libération.
+        // Détenu : temps restant et libération. La mise en garde à vue / prison, la fouille et le transport se font au shift + clic droit sur le menotté.
         int yj = y0 + 148;
         if (d.jailType() >= 0) {
             label(jailText(d), x, yj + 6, MineNorthStyle.ALERT, w - 110);
             btn(x + w - 100, yj, 100, 20, "LIBÉRER", MineNorthStyle.GREEN, () -> send(ModNetwork.A_RELEASE, d.id(), "", "", 0, 0)).enabled(officer);
         } else {
-            int bw = (w - 80) / 2;
-            bDuration = box(x, yj + 1, 72, "Durée (min)", kDuration, 4);
-            btn(x + 76, yj, bw, 20, d.near() ? "GARDE À VUE" : "GARDE À VUE : TROP LOIN", MineNorthStyle.CYAN,
-                    () -> send(ModNetwork.A_JAIL, d.id(), bReason.getValue(), "", 0, number(bDuration.getValue()))).enabled(d.near());
-            btn(x + 80 + bw, yj, bw, 20, "INCARCÉRER (PRISON)", MineNorthStyle.PINK,
-                    () -> send(ModNetwork.A_JAIL, d.id(), bReason.getValue(), "", 1, number(bDuration.getValue()))).enabled(officer && d.near());
+            label("Garde à vue, prison, fouille et transport : shift + clic droit sur le menotté.", x, yj + 6, MineNorthStyle.MUTED, w);
         }
     }
 

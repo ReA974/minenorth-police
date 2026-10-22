@@ -20,7 +20,14 @@ public final class CasierPerms {
     public static boolean canPlaceOrBreak(Player p, String service) {
         if (isOp(p)) return true;
         if (!CasierConfig.CHEF_PEUT_POSER.get() || !(p instanceof ServerPlayer sp)) return false;
+        if (service == null || service.isEmpty()) return chiefService(sp) != null;   // casier pas encore relié : un chef peut le poser
         ServiceDef sv = Services.get(service);
         return sv != null && sv.chief(sp);
+    }
+
+    /** Premier service dont le joueur est le chef, ou null. */
+    public static String chiefService(ServerPlayer p) {
+        for (ServiceDef s : Services.all()) if (s.chief(p)) return s.id();
+        return null;
     }
 }
