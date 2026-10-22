@@ -77,13 +77,32 @@ def t_label(x, y):
     return n((30, 60, 150), 5) if y in (3, 4) else n((236, 236, 240), 4)
 
 
+def t_tube(x, y):             # tube de trepied noir mat avec un liseré brillant
+    return n((70, 72, 80), 5) if x == 1 else n((22, 22, 26), 4)
+
+
+def t_emit(x, y):             # module emetteur : anneaux concentriques sombres et une pastille centrale
+    d = (x - 3.5) ** 2 + (y - 3.5) ** 2
+    if d < 2:
+        return n((120, 130, 150), 6)
+    if d < 6:
+        return n((18, 20, 26), 3)
+    if d < 11:
+        return n((58, 62, 74), 4)
+    return n((30, 32, 40), 3)
+
+
+def t_cable(x, y):
+    return n((16, 16, 18), 3)
+
+
 def t_vent(x, y):
     return n((40, 42, 50), 3) if y % 2 == 0 else t_housing(x, y)
 
 
 TILES = [("orange", t_orange), ("orange_dark", t_orange_dark), ("reflect", t_reflect), ("rubber", t_rubber), ("grey", t_grey),
          ("grey_dark", t_grey_dark), ("housing", t_housing), ("lens", t_lens), ("screen", t_screen), ("led_red", t_led_red),
-         ("led_green", t_led_green), ("yellow", t_yellow), ("label", t_label), ("vent", t_vent)]
+         ("led_green", t_led_green), ("yellow", t_yellow), ("label", t_label), ("vent", t_vent), ("tube", t_tube), ("emit", t_emit), ("cable", t_cable)]
 
 
 def use_tiles():
@@ -127,47 +146,89 @@ def build_cone():
     return m
 
 
-def build_radar():
+def tube(m, x, y1, y2, z, mat="tube", w=1.2, rot=None, name="tube"):
+    m.box(x - w / 2, y1, z - w / 2, x + w / 2, y2, z + w / 2, mat, rot=rot, name=name)
+
+
+def build_radar_lower():
+    """Moitie basse (y 0-16) : trepied en tubes noirs (3 pieds ecartes), collier de reglage, colonne centrale et cables qui trainent au sol."""
     use_tiles()
     m = G.Model("radar")
-    # --- trepied : 3 branches ecartees (deux de cote, une vers l'arriere), pieds en caoutchouc, tete orientable
-    m.box(7.0, 5.0, 7.0, 9.0, 7.4, 9.0, "grey_dark", name="rotule")
-    m.box(6.2, 6.4, 6.2, 9.8, 7.6, 9.8, "grey", name="plateau")
-    m.box(7.2, 4.4, 7.2, 8.8, 5.2, 8.8, "grey", name="manchon")
-    m.box(3.6, 0.6, 7.4, 4.6, 5.4, 8.6, "grey_dark", rot=("z", 22.5, (4.1, 5.4, 8.0)), name="jambe")
-    m.box(11.4, 0.6, 7.4, 12.4, 5.4, 8.6, "grey_dark", rot=("z", -22.5, (11.9, 5.4, 8.0)), name="jambe")
-    m.box(7.4, 0.6, 11.4, 8.6, 5.4, 12.4, "grey_dark", rot=("x", -22.5, (8.0, 5.4, 11.9)), name="jambe")
-    m.box(2.9, 0.0, 7.2, 4.5, 0.9, 8.8, "rubber", name="pied")
-    m.box(11.5, 0.0, 7.2, 13.1, 0.9, 8.8, "rubber", name="pied")
-    m.box(7.2, 0.0, 12.6, 8.8, 0.9, 14.2, "rubber", name="pied")
-    m.box(5.2, 2.6, 7.6, 10.8, 3.0, 8.4, "grey", name="entretoise")
-    m.box(9.8, 6.4, 7.4, 11.4, 7.2, 8.6, "grey_dark", name="manette")
-    m.box(11.4, 6.2, 7.4, 12.0, 7.4, 8.6, "rubber", name="bouton")
-    # --- boitier : corps clair, face avant noire avec deux objectifs, dessus avec ecran, poignee, antenne
-    m.box(4.0, 7.6, 3.2, 12.0, 12.6, 12.6, "housing", name="boitier", top="housing")
-    m.box(3.6, 7.6, 3.6, 4.0, 12.2, 12.2, "grey", name="flanc")
-    m.box(12.0, 7.6, 3.6, 12.4, 12.2, 12.2, "grey", name="flanc")
-    m.box(4.2, 7.8, 2.6, 11.8, 12.4, 3.2, "rubber", name="face")
-    # objectifs (anneau noir + verre bleu), a l'avant (face nord, z faible)
-    for cx in (6.3, 9.7):
-        m.ring_xy(cx, 10.0, 1.7, 0.5, 1.6, 2.7, "rubber", name="objectif")
-        m.box(cx - 1.15, 8.85, 1.9, cx + 1.15, 11.15, 2.65, "lens", name="verre")
-    m.box(6.8, 11.9, 2.2, 9.2, 12.4, 2.7, "grey_dark", name="visee")
-    # dessus : ecran de lecture de vitesse incline, boutons, voyants
-    m.box(5.0, 12.6, 6.4, 11.0, 13.2, 11.8, "rubber", name="cadre")
-    m.box(5.4, 13.2, 6.8, 10.6, 13.4, 11.4, "screen", name="ecran")
-    m.box(5.0, 12.6, 4.2, 7.0, 13.0, 5.6, "led_green", name="voyant")
-    m.box(7.6, 12.6, 4.2, 9.6, 13.0, 5.6, "led_red", name="voyant")
-    m.box(10.2, 12.6, 4.2, 11.0, 13.0, 5.6, "yellow", name="bouton")
-    # poignee de transport + antenne
-    m.box(6.0, 13.2, 11.6, 6.8, 15.0, 12.4, "grey_dark", name="poignee")
-    m.box(9.2, 13.2, 11.6, 10.0, 15.0, 12.4, "grey_dark", name="poignee")
-    m.box(6.0, 15.0, 11.6, 10.0, 15.8, 12.4, "rubber", name="poignee")
-    m.box(11.0, 12.6, 4.0, 11.6, 15.6, 4.6, "grey_dark", name="antenne")
-    m.box(10.9, 15.6, 3.9, 11.7, 16.0, 4.7, "led_red", name="balise")
-    # arriere : grille d'aeration et plaque
-    m.box(5.0, 8.4, 12.6, 11.0, 11.6, 12.9, "vent", name="grille")
-    m.box(6.0, 7.8, 12.6, 10.0, 8.3, 12.9, "label", name="plaque")
+    top = 12.4
+    # pieds : deux sur les cotes (rotation Z), un vers l'arriere (rotation X) ; pied en caoutchouc au bout
+    tube(m, 8.0, top - 13.6, top, 8.0, rot=("z", 22.5, (8.0, top, 8.0)), w=1.3, name="pied")
+    tube(m, 8.0, top - 13.6, top, 8.0, rot=("z", -22.5, (8.0, top, 8.0)), w=1.3, name="pied")
+    tube(m, 8.0, top - 13.6, top, 8.0, rot=("x", -22.5, (8.0, top, 8.0)), w=1.3, name="pied")
+    for fx, fz in ((2.9, 8.0), (13.1, 8.0), (8.0, 13.1)):
+        m.box(fx - 1.0, 0.0, fz - 1.0, fx + 1.0, 0.9, fz + 1.0, "rubber", name="semelle")
+    # moyeu, collier de serrage et manette de blocage
+    m.box(6.2, top - 1.6, 6.2, 9.8, top + 0.9, 9.8, "grey_dark", name="moyeu")
+    G.Model.ring_xz(m, 8.0, 8.0, 2.2, 0.7, top + 0.9, top + 2.1, "grey", name="collier")
+    m.box(9.6, top + 0.2, 7.3, 11.6, top + 1.2, 8.7, "grey", name="manette")
+    m.box(11.6, top - 0.2, 7.2, 12.5, top + 1.6, 8.8, "rubber", name="poignee")
+    # colonne centrale : tube coulissant + mecanisme de reglage (cremaillere et molette)
+    tube(m, 8.0, top + 2.1, 16.0, 8.0, w=2.0, name="colonne")
+    m.box(8.9, top + 2.4, 7.2, 9.5, 16.0, 8.8, "grey_dark", name="cremaillere")
+    m.box(6.0, top + 4.4, 7.2, 7.1, top + 5.6, 8.8, "grey", name="molette")
+    m.box(5.4, top + 4.5, 7.5, 6.0, top + 5.5, 8.5, "rubber", name="molette")
+    # cables : sortent de l'arriere de la colonne, descendent et trainent au sol en boucle
+    m.box(8.0, 4.2, 9.1, 8.6, 16.0, 9.7, "cable", name="cable")
+    m.box(8.0, 1.8, 9.6, 8.6, 4.4, 10.2, "cable", name="cable")
+    m.box(8.0, 0.0, 10.1, 8.6, 1.9, 10.7, "cable", name="cable")
+    m.box(8.0, 0.0, 10.6, 8.6, 0.6, 13.6, "cable", name="cable")
+    m.box(8.0, 0.0, 13.0, 11.0, 0.6, 13.6, "cable", name="cable")
+    m.box(10.4, 0.0, 10.4, 11.0, 0.6, 13.6, "cable", name="cable")
+    m.box(7.9, 0.0, 10.0, 8.7, 1.6, 10.8, "rubber", name="serre-cable")
+    return m
+
+
+def rounded_body(m, x1, x2, y1, y2, z1, z2, mat, top_mat=None):
+    """Boitier arrondi : corps, quatre aretes verticales chanfreinees (cubes tournes a 45 degres), plaques haute et basse plus petites (biseau)."""
+    m.box(x1, y1 + 0.5, z1, x2, y2 - 0.5, z2, mat, name="boitier")
+    for cx in (x1, x2):
+        for cz in (z1, z2):
+            m.box(cx - 0.9, y1 + 0.5, cz - 0.9, cx + 0.9, y2 - 0.5, cz + 0.9, mat, rot=("y", 45, (cx, (y1 + y2) / 2, cz)), name="arete")
+    m.box(x1 + 0.7, y2 - 0.55, z1 + 0.7, x2 - 0.7, y2, z2 - 0.7, top_mat or mat, name="biseau")
+    m.box(x1 + 0.7, y1, z1 + 0.7, x2 - 0.7, y1 + 0.55, z2 - 0.7, mat, name="biseau")
+
+
+def build_radar_upper():
+    """Moitie haute (y 16-32) : boitier gris clair arrondi, deux grandes ouvertures rondes a l'avant (vitre sombre / module emetteur), petit boitier carre au-dessus."""
+    use_tiles()
+    m = G.Model("radar")
+    # fixation : platine sur la colonne et deux bras en fourche
+    m.box(6.2, 16.0, 6.2, 9.8, 17.4, 9.8, "grey_dark", name="platine")
+    m.box(4.2, 17.4, 6.8, 5.4, 20.6, 9.2, "grey_dark", name="bras")
+    m.box(10.6, 17.4, 6.8, 11.8, 20.6, 9.2, "grey_dark", name="bras")
+    m.box(7.2, 17.4, 8.6, 8.8, 19.0, 10.0, "grey_dark", name="verin")
+    # boitier principal large et bas
+    rounded_body(m, 1.2, 14.8, 18.6, 26.0, 4.0, 12.4, "housing")
+    # pare-soleil au-dessus des ouvertures
+    m.box(1.8, 25.0, 3.0, 14.2, 25.7, 4.2, "grey", name="visiere")
+    # deux grandes ouvertures circulaires cote a cote (face avant = nord, z faible) : collerette noire + fond
+    left, right, cy = 5.0, 11.0, 22.2
+    for cx in (left, right):
+        G.Model.ring_xy(m, cx, cy, 2.9, 0.7, 2.7, 4.2, "rubber", name="collerette")
+        G.Model.ring_xy(m, cx, cy, 2.25, 0.35, 3.3, 4.2, "grey_dark", name="bague")
+    m.box(left - 2.2, cy - 2.2, 3.6, left + 2.2, cy + 2.2, 4.0, "lens", name="vitre")
+    m.box(left - 1.6, cy + 1.0, 3.4, left - 0.4, cy + 1.6, 3.6, "reflect" if False else "housing", name="reflet")
+    m.box(right - 2.2, cy - 2.2, 3.6, right + 2.2, cy + 2.2, 4.0, "emit", name="emetteur")
+    m.box(right - 0.7, cy - 0.7, 3.2, right + 0.7, cy + 0.7, 3.7, "grey", name="cone")
+    # voyants et plaque sous les ouvertures
+    m.box(2.2, 19.2, 3.5, 3.4, 19.8, 4.0, "led_green", name="voyant")
+    m.box(12.6, 19.2, 3.5, 13.8, 19.8, 4.0, "led_red", name="voyant")
+    m.box(5.6, 19.0, 3.7, 10.4, 19.8, 4.0, "label", name="plaque")
+    # petit boitier carre au-dessus, avec sa fenetre sombre au centre
+    rounded_body(m, 5.8, 10.2, 26.0, 30.4, 6.2, 10.4, "housing")
+    m.box(6.7, 27.0, 5.9, 9.3, 29.2, 6.4, "grey_dark", name="cadre")
+    m.box(7.1, 27.4, 5.6, 8.9, 28.8, 6.2, "lens", name="fenetre")
+    m.box(7.4, 30.4, 7.4, 8.6, 31.0, 8.6, "led_red", name="balise")
+    # arriere : grille d'aeration, prise de cable, poignee
+    m.box(3.0, 20.0, 12.4, 13.0, 24.6, 12.8, "vent", name="grille")
+    m.box(7.4, 18.8, 12.4, 8.6, 19.8, 13.2, "rubber", name="prise")
+    m.box(7.4, 17.0, 12.6, 8.6, 18.9, 13.0, "cable", name="cable")
+    m.box(4.0, 26.0, 8.4, 5.0, 27.4, 11.6, "grey_dark", name="poignee")
+    m.box(11.0, 26.0, 8.4, 12.0, 27.4, 11.6, "grey_dark", name="poignee")
     return m
 
 
@@ -176,6 +237,17 @@ def display_block():
             "fixed": {"scale": [0.6, 0.6, 0.6]}, "ground": {"translation": [0, 3, 0], "scale": [0.4, 0.4, 0.4]},
             "thirdperson_righthand": {"rotation": [75, 45, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
             "firstperson_righthand": {"rotation": [0, 45, 0], "scale": [0.4, 0.4, 0.4]}}
+
+
+def shifted(els, dy):
+    import copy
+    out = copy.deepcopy(els)
+    for e in out:
+        e["from"][1] += dy
+        e["to"][1] += dy
+        if "rotation" in e:
+            e["rotation"]["origin"][1] += dy
+    return out
 
 
 def write(name, model, tex_name, folder="block"):
@@ -188,6 +260,18 @@ def write(name, model, tex_name, folder="block"):
     return js
 
 
+def display_tall():
+    """Objet de 2 blocs de haut (32 unites) : reduit pour tenir dans l'icone, recentre en hauteur."""
+    return {"gui": {"rotation": [28, 225, 0], "translation": [0, -3.4, 0], "scale": [0.5, 0.5, 0.5]},
+            "fixed": {"rotation": [0, 180, 0], "translation": [0, -3.2, 0], "scale": [0.4, 0.4, 0.4]},
+            "ground": {"rotation": [0, 0, 0], "translation": [0, 1, 0], "scale": [0.25, 0.25, 0.25]},
+            "thirdperson_righthand": {"rotation": [0, 90, 0], "translation": [0, 0.5, 0], "scale": [0.3, 0.3, 0.3]},
+            "thirdperson_lefthand": {"rotation": [0, 90, 0], "translation": [0, 0.5, 0], "scale": [0.3, 0.3, 0.3]},
+            "firstperson_righthand": {"rotation": [0, 135, 0], "translation": [0, 1, 0], "scale": [0.34, 0.34, 0.34]},
+            "firstperson_lefthand": {"rotation": [0, 135, 0], "translation": [0, 1, 0], "scale": [0.34, 0.34, 0.34]},
+            "head": {"translation": [0, 8, 0], "scale": [0.5, 0.5, 0.5]}}
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(G.HERE, "apercus")
     os.makedirs(out, exist_ok=True)
@@ -195,12 +279,29 @@ def main():
     at = atlas()
     os.makedirs(os.path.join(G.RES, "textures", "block"), exist_ok=True)
     at.save(os.path.join(G.RES, "textures", "block", "chantier_atlas.png"))
-    cone, radar = build_cone(), build_radar()
+    cone = build_cone()
+    lower, upper = build_radar_lower(), build_radar_upper()
     jc = write("plot_chantier", cone, "chantier_atlas")
-    jr = write("radar_fixe", radar, "chantier_atlas")
-    sheet = Image.new("RGB", (4 * 360, 360), (52, 56, 76))
-    for i, (js, rot) in enumerate(((jc, (30, 225, 0)), (jc, (20, 200, 0)), (jr, (30, 225, 0)), (jr, (25, 150, 0)))):
-        sheet.paste(G.render_model(js, at, rot, 1.0, 360), (i * 360, 0))
+    write("radar_fixe_lower", lower, "chantier_atlas")
+    up_block = G.Model("radar")
+    up_block.els = shifted(upper.els, -16)
+    write("radar_fixe_upper", up_block, "chantier_atlas")
+    full = G.Model("radar")
+    full.els = lower.els + upper.els
+    js = {"credit": "MineNorth RP", "parent": "block/block",
+          "textures": {"t": "minenorthpolice:block/chantier_atlas", "particle": "minenorthpolice:block/chantier_atlas"},
+          "elements": full.els, "display": display_tall()}
+    with open(os.path.join(G.RES, "models", "item", "radar_mobile.json"), "w", encoding="utf-8") as f:
+        json.dump(js, f, indent=1)
+    # apercus : cone, radar entier (3 angles), boitier de pres, trepied
+    sheet = Image.new("RGB", (4 * 420, 2 * 420), (52, 56, 76))
+    views = [(jc, (30, 225, 0), 1.0), (js, (20, 200, 0), 0.55), (js, (20, 150, 0), 0.55), (js, (15, 180, 0), 0.55),
+             (js, (10, 215, 0), 1.0), (js, (28, 225, 0), 0.5), (js, (0, 180, 0), 0.55), (js, (60, 200, 0), 0.55)]
+    for i, (j, rot, sc) in enumerate(views):
+        im = G.render_model(j, at, rot, sc, 420, center=(8, 16, 8) if j is js else (8, 8, 8))
+        if j is js and sc == 1.0:
+            pass
+        sheet.paste(im, ((i % 4) * 420, (i // 4) * 420))
     sheet.save(os.path.join(out, "chantier.png"))
     print("ok")
 

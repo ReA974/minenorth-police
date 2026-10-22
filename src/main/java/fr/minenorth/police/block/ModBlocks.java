@@ -14,7 +14,7 @@ public final class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, MineNorthPolice.MOD_ID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, MineNorthPolice.MOD_ID);
 
-    public static final RegistryObject<Block> RADAR_FIXE = BLOCKS.register("radar_fixe", RadarBlock::new);
+    public static final RegistryObject<Block> RADAR_FIXE = BLOCKS.register("radar_fixe", RadarMobileBlock::new);
 
     /** Radar fixe : borne de 1 x 2 blocs (le trépied ci-dessus est le « radar mobile »). */
     public static final RegistryObject<Block> RADAR_BORNE = BLOCKS.register("radar_borne", RadarBorneBlock::new);

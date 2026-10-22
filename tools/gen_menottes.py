@@ -437,7 +437,7 @@ FACES = {
 }
 
 
-def render_model(model, atlas, rot, scale, size, bg=(52, 56, 76), view_flip=False):
+def render_model(model, atlas, rot, scale, size, bg=(52, 56, 76), view_flip=False, center=(8, 8, 8)):
     """Rasterise les elements d'un modele JSON. rot = (rx, ry, rz) du bloc d'affichage (ex. gui : 30, 225, 0)."""
     img = Image.new("RGB", (size, size), bg)
     zbuf = [[-1e9] * size for _ in range(size)]
@@ -464,7 +464,7 @@ def render_model(model, atlas, rot, scale, size, bg=(52, 56, 76), view_flip=Fals
                 quad = [[o[i] + mul(Mr, [q[0] - o[0], q[1] - o[1], q[2] - o[2]])[i] for i in range(3)] for q in quad]
                 nrm = mul(Mr, nrm)
             # centre du modele (8,8,8), puis rotation d'affichage
-            quad = [mul(R, [(q[0] - 8) * scale, (q[1] - 8) * scale, (q[2] - 8) * scale]) for q in quad]
+            quad = [mul(R, [(q[0] - center[0]) * scale, (q[1] - center[1]) * scale, (q[2] - center[2]) * scale]) for q in quad]
             nrm = mul(R, nrm)
             if nrm[2] <= 0:        # face tournee a l'opposé du spectateur (qui regarde depuis +z)
                 continue

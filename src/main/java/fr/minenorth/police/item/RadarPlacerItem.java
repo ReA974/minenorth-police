@@ -69,7 +69,9 @@ public class RadarPlacerItem extends Item {
         ServerLevel level = lv;
         BlockPos target = level.getBlockState(clicked).canBeReplaced() ? clicked : clicked.relative(face);
         Block b = item.block.get();
-        BlockState state = b.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, p.getDirection().getOpposite());
+        // Le radar portable regarde dans la direction de la pose (la route) ; les autres objets font face au joueur.
+        BlockState state = b.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING,
+                b instanceof fr.minenorth.police.block.RadarMobileBlock ? p.getDirection() : p.getDirection().getOpposite());
         boolean tall = state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF);
         BlockPos top = target.above();
         if (!level.isLoaded(target) || target.getY() < level.getMinBuildHeight() || target.getY() >= level.getMaxBuildHeight() - (tall ? 1 : 0)

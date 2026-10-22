@@ -1,18 +1,33 @@
 {
  "variants": {
-  "facing=north": {
-   "model": "minenorthpolice:block/radar_fixe"
+  "facing=north,half=lower": {
+   "model": "minenorthpolice:block/radar_fixe_lower"
   },
-  "facing=east": {
-   "model": "minenorthpolice:block/radar_fixe",
+  "facing=north,half=upper": {
+   "model": "minenorthpolice:block/radar_fixe_upper"
+  },
+  "facing=east,half=lower": {
+   "model": "minenorthpolice:block/radar_fixe_lower",
    "y": 90
   },
-  "facing=south": {
-   "model": "minenorthpolice:block/radar_fixe",
+  "facing=east,half=upper": {
+   "model": "minenorthpolice:block/radar_fixe_upper",
+   "y": 90
+  },
+  "facing=south,half=lower": {
+   "model": "minenorthpolice:block/radar_fixe_lower",
    "y": 180
   },
-  "facing=west": {
-   "model": "minenorthpolice:block/radar_fixe",
+  "facing=south,half=upper": {
+   "model": "minenorthpolice:block/radar_fixe_upper",
+   "y": 180
+  },
+  "facing=west,half=lower": {
+   "model": "minenorthpolice:block/radar_fixe_lower",
+   "y": 270
+  },
+  "facing=west,half=upper": {
+   "model": "minenorthpolice:block/radar_fixe_upper",
    "y": 270
   }
  }

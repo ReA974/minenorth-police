@@ -133,7 +133,8 @@ public class RadarBlock extends BaseEntityBlock {
             return;
         }
         boolean borne = st.getBlock() instanceof RadarBorneBlock;
-        if (borne) level.setBlock(pos.above(), Blocks.AIR.defaultBlockState(), 35);
+        // Borne et radar portable sont sur deux blocs : la moitié haute part avec la basse, sans drop (un seul objet rendu).
+        if (st.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)) level.setBlock(pos.above(), Blocks.AIR.defaultBlockState(), 35);
         level.removeBlockEntity(pos);
         level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
         if (!p.getAbilities().instabuild) {
