@@ -6,7 +6,7 @@ modId="minenorthpolice"
 version="1.0.0"
 displayName="MineNorth Police"
 authors="MineNorth RP"
-description='''Police MineNorth RP : tablette, casier judiciaire, amendes, perquisitions, grades, radars (MTS), test salivaire, détecteur de métaux, taser.'''
+description='''Police MineNorth RP : tablette, casier judiciaire, amendes, perquisitions, grades, radars (MTS), test salivaire, détecteur de métaux, taser, casiers de service (police, pompiers, autres services).'''
 [[dependencies.minenorthpolice]]
 modId="forge"
 mandatory=true

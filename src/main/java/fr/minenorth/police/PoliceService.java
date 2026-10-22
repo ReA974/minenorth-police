@@ -639,7 +639,7 @@ public final class PoliceService {
             case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
             case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
             case ModNetwork.A_DUTY -> {
-                if (onDuty(p.getUUID()) && !fr.minenorth.police.compat.CasierHook.allowLeave(p)) { reopen(p, k.n(), rank); break; }
+                if (onDuty(p.getUUID()) && !fr.minenorth.police.casier.ServiceManager.allowLeave(p)) { reopen(p, k.n(), rank); break; }
                 setDuty(s, p.getUUID(), !onDuty(p.getUUID()));
                 reopen(p, k.n(), rank);
             }

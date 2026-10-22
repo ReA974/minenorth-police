@@ -14,5 +14,6 @@ public final class SharedTab {
     public static void fill(BuildCreativeModeTabContentsEvent e) {
         if (!e.getTabKey().location().equals(new ResourceLocation("minenorthapi", "minenorth"))) return;
         fr.minenorth.police.item.ModItems.TAB_ITEMS.accept(e.getParameters(), e);
+        fr.minenorth.police.casier.ModItems.TAB_ITEMS.accept(e.getParameters(), e);
     }
 }

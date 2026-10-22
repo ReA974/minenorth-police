@@ -107,3 +107,77 @@ Onglet **TRANSPORT** du dossier : **EMBARQUER LE SUSPECT** l'installe sur un si�
   (propriétaire, plaque, appel du mécano, mise en fourrière forcée).
 - Tablette : bouton **FOURRIÈRE** dans la barre du haut : même menu pour le véhicule visé (ou le plus proche à 8 blocs).
 - Le menu est celui du mod Véhicules (`Impound.openPoliceMenu`, par réflexion) ; le véhicule doit avoir un propriétaire enregistré.
+
+## Casier de service (fusionné dans ce mod, 22/10)
+
+**Ex-mod `minenorth-casier`, maintenant dans `minenorth-police` : supprimer `minenorth-casier-*.jar`.** Les noms de registre restent sous l'espace de noms `minenorth_casier` (blocs, objets, menus), la sauvegarde monde reste `minenorth_casier` et la config reste `config/minenorth_casier-common.toml` : rien ne se perd. Le contrôle « passe par ton casier » est un appel direct (Secours l'appelle par réflexion). Aucun paquet ajouté au canal Police : le casier garde son canal `minenorth_casier:network`. Fichiers dans `fr.minenorth.police.casier`, outils dans `tools/gen_casier.py`.
+
+Mod Forge 1.20.1 (Mojang mappings, JDK 17) pour MineNorthRP. Les métiers **police** et **pompiers / secours** (et d'autres services reliés à une entreprise) ont un
+**casier** : ils y rangent leur inventaire civil en sécurité, y enfilent leur **stuff complet** de service, et ne peuvent **pas quitter leur service**
+tant qu'ils ont encore sur eux des affaires qui ne sont pas de leur métier.
+
+Secours, Entreprises, Curios et ZeroContact sont lus par l'API MineNorth ou par réflexion (facultatifs).
+
+### Fonctionnement
+
+1. **Bloc « Casier de service »** : vestiaire métallique de 2 blocs de haut, 4 couleurs (police bleu, pompier rouge, secours vert, service gris), plaque du service,
+   portes qui s'ouvrent en 3 temps (animation par états de bloc). Posé par un OP, ou par le **chef du service** si la config l'autorise. Chaque casier est relié à un service
+   (par défaut celui de sa couleur ; un OP / chef le change avec le bouton « Service » de l'écran admin). Seuls les membres **en service** de ce service l'utilisent.
+2. **Prise d'équipement** : le joueur prend son service comme d'habitude (tablette ou accueil), puis clique droit sur un casier de son service et « Prendre mon équipement ».
+   Le serveur **sauvegarde tout son inventaire civil** (inventaire, barre d'action, armure, seconde main, Curios si le mod est présent, pas l'XP) sur disque,
+   le vide, puis lui donne le stuff du métier. Chaque objet donné est marqué (NBT `service`).
+3. **Pendant le service** : l'équipement marqué ne peut être ni jeté, ni rangé dans un coffre / ender chest / établi / cheval (le serveur le reprend dans le conteneur), ni posé dans un cadre,
+   ni donné : un objet marqué trouvé chez un autre joueur (ou chez quelqu'un qui n'est pas en service) est supprimé. Les objets ramassés vont dans le **sac de saisie** (config `ramassage`).
+   À la mort, l'équipement disparaît (il se reprend gratuitement au casier, ou est perdu selon la config), le sac de saisie va à la consigne, l'inventaire civil n'est jamais lâché.
+4. **Fin de service** :
+   - par le **casier** : l'écran liste ce qui sera déposé ; « Terminer mon service » dépose les affaires étrangères (consigne ou civil, selon la config), reprend le stuff,
+     **restitue l'inventaire civil dans ses cases d'origine** puis coupe le service ;
+   - par la **tablette / l'accueil** : refusé avec « Passe par ton casier : tu as encore des affaires sur toi » s'il reste des affaires étrangères ;
+     si le joueur n'a plus rien d'étranger, c'est accepté et le serveur fait la restitution tout seul (config `fin_de_service_sans_casier_si_rien_d_etranger_sur_soi`, défaut vrai).
+5. **Écran admin du casier** (clic droit **accroupi**, OP ou chef du service) : changer le service relié, **modifier le stuff** (cases fantômes : on clique avec un objet pour le copier,
+   rien n'est retiré de l'inventaire de l'admin), ouvrir la **consigne** (objets saisis et déposés, une personne à la fois), « Revenir au stuff du fichier ».
+
+Aucune commande : tout passe par les écrans. Un OP est soumis aux mêmes règles de gameplay que les autres (il doit être membre du service pour utiliser un casier).
+
+### Menu G (Curios : gilets, équipement tactique, ZeroContact)
+
+Le menu ouvert avec la touche **G** est celui de **Curios** (les objets de ZeroContact sont des objets Curios ; ZeroContact lui-même n'a pas de touche G). Le casier le gère par réflexion, sans dépendance dure :
+la prise de service **sauvegarde** les cases Curios (normales et cosmétiques) avec le reste du civil et les **restitue** à l'identique ; le stuff est **équipé directement** dans les cases du menu G quand l'objet y va
+(ou selon l'emplacement choisi par objet : `quantité@inventaire`, `@curios`, `@back`... voir le toml) ; ces cases comptent dans le contrôle des « affaires étrangères » et dans la protection (pas de jet, pas de rangement, nettoyage des drops de mort).
+ZeroContact n'est pas modifié.
+
+### Cas limites gérés
+
+| Cas | Comportement |
+| --- | --- |
+| Déconnexion en service | la session reste ; à la reconnexion le service reprend (le service Police est remis en service automatiquement) |
+| Absence trop longue | après `expiration_hors_ligne_minutes` (30 par défaut, 0 = jamais) : à la reconnexion, restitution automatique de l'inventaire civil |
+| Crash du serveur | la sauvegarde est écrite sur disque **avant** de vider l'inventaire, et l'inventaire du joueur est enregistré **avant** d'effacer la sauvegarde ; un instantané périmé est détecté à la connexion |
+| Mort | civil jamais lâché ; équipement repris au casier ou détruit selon `mort_equipement` ; sac de saisie versé à la consigne |
+| Inventaire plein à la restitution | le reste est gardé « en attente » et rendu dès qu'il y a de la place (connexion, toutes les 5 s, ou bouton du casier) |
+| Changement de métier / renvoi | contrôle chaque seconde : plus membre = fin de service automatique avec restitution |
+| Casier détruit / plusieurs casiers | n'importe quel casier du même service convient ; s'il n'en reste aucun, la tablette peut terminer le service (dépôt automatique) |
+| Deux joueurs en même temps | tout est traité sur le fil serveur, par joueur ; la consigne n'est ouverte que par une personne à la fois |
+| Joueur supprimé (panneau admin) | sa session et ses affaires en attente sont effacées (événement `PlayerWipeEvent`) |
+
+### Configuration
+
+`config/minenorth_casier-common.toml`, commentaires en français : fin de service sans casier, prise de service au casier, pose par le chef, ramassage (`SAC`/`INTERDIT`/`LIBRE`),
+capacité du sac, destination des objets étrangers (`CONSIGNE`/`CIVIL`), mort, expiration hors ligne, objets conservés en service (ex. téléphone), **stuff par métier**
+(`police`, `pompiers`, `autres_services`, une ligne `identifiant|quantité|NBT facultatif`) et services d'entreprise supplémentaires (`services_supplementaires`).
+Le stuff peut aussi être modifié en jeu (écran admin) : l'écran l'emporte alors sur le fichier. Les objets de mods absents sont ignorés.
+
+### Fichiers
+
+- `tools/gen_casier.py` : textures (PIL), modèles JSON à éléments (UV dans le repère 0-16), états de bloc, modèles d'objets, tables de butin. `python gen_casier.py <dossier>` écrit aussi des rendus de contrôle.
+- `tools/rendu_modele.py` : petit rendu logiciel hors jeu des modèles (mêmes règles de sommets, UV et rotation que le jeu).
+- `tools/gen_lang.py` : `fr_fr` et `en_us` identiques.
+- `docs/apercu-casiers.png` : rendus de contrôle des casiers (fermé, entrouvert, ouvert) et du sac de saisie.
+
+### Ce qui n'est PAS testé en jeu
+
+Le mod compile et se charge, mais **aucun test en jeu n'a été fait** : animation des portes, rendu des modèles dans le moteur (vérifiés seulement par le rendu logiciel),
+écrans, clic droit accroupi, restitution réelle de l'inventaire, intégration Curios / menu G (par réflexion, jamais exécutée : validité des cases `isStackValid`, équipement, restitution), TACZ et objets d'autres mods, contrôle depuis la tablette
+Police / Secours et l'accueil, scénarios de crash. La protection ne couvre pas un mod tiers qui prendrait lui-même un objet marqué dans un inventaire (vol, fouille, boutique) :
+le contrôle périodique supprime alors l'objet marqué chez son nouveau porteur, mais ne le rend pas au propriétaire (il le reprend au casier).
+

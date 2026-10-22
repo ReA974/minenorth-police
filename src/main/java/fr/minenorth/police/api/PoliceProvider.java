@@ -16,7 +16,7 @@ public final class PoliceProvider implements fr.minenorth.api.PoliceService {
     @Override public boolean setDuty(MinecraftServer s, UUID player, boolean on) {
         if (player == null) return false;
         ServerPlayer sp = on ? null : s.getPlayerList().getPlayer(player);
-        if (sp != null && PoliceApi.onDuty(player) && !fr.minenorth.police.compat.CasierHook.allowLeave(sp)) return true;   // casier de service : pas de fin de service sans passer par le casier
+        if (sp != null && PoliceApi.onDuty(player) && !fr.minenorth.police.casier.ServiceManager.allowLeave(sp)) return true;   // casier de service : pas de fin de service sans passer par le casier
         fr.minenorth.police.PoliceService.setDuty(s, player, on);
         return PoliceApi.onDuty(player);
     }

@@ -5,6 +5,10 @@
   "minenorthpolice:radar_borne",
   "minenorthpolice:douane",
   "minenorthpolice:barriere_chantier",
-  "minenorthpolice:plot_chantier"
+  "minenorthpolice:plot_chantier",
+  "minenorth_casier:casier_police",
+  "minenorth_casier:casier_pompier",
+  "minenorth_casier:casier_ambulance",
+  "minenorth_casier:casier_service"
  ]
 }
