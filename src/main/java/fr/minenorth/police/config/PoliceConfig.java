@@ -131,6 +131,14 @@ public final class PoliceConfig {
     /** Pour menotter sans attendre une cible qui résiste : elle ne doit pas tenir d'arme (liste « objets du détecteur de métaux ») ou doit être ralentie (taser). */
     public boolean menottes_refuser_si_arme = true;
 
+    /** Menottes artisanales : un autre joueur (non policier, pas le ravisseur) les défait à mains nues en clic droit : durée (secondes) pendant laquelle il ne doit pas bouger. */
+    public int menottes_artisanales_retrait_secondes = 6;
+    /** Menottes artisanales : le menotté tente de s'en libérer seul (clic droit maintenu) : durée cumulée (secondes) et attente (secondes) avant une nouvelle tentative après un abandon. */
+    public int menottes_artisanales_evasion_secondes = 20;
+    public int menottes_artisanales_evasion_attente_secondes = 10;
+    /** Menottes artisanales défaites ou arrachées : chance (%) qu'elles soient cassées au lieu de revenir sous forme d'objet. */
+    public int menottes_artisanales_casse_pourcent = 25;
+
     /** Fouille d'un joueur menotté : délai (secondes) par objet retiré. */
     public int fouille_delai_secondes = 3;
     /** Distance maximum (blocs) entre le fouilleur et le menotté pendant la fouille. */
@@ -236,6 +244,10 @@ public final class PoliceConfig {
         c.menottes_liberation_minutes = Math.max(0, c.menottes_liberation_minutes);
         c.menottes_ralentissement_pourcent = Math.max(0, Math.min(90, c.menottes_ralentissement_pourcent));
         if (c.menottes_emotes_reddition == null) c.menottes_emotes_reddition = def.menottes_emotes_reddition;
+        c.menottes_artisanales_retrait_secondes = Math.max(1, Math.min(60, c.menottes_artisanales_retrait_secondes));
+        c.menottes_artisanales_evasion_secondes = Math.max(3, Math.min(300, c.menottes_artisanales_evasion_secondes));
+        c.menottes_artisanales_evasion_attente_secondes = Math.max(0, Math.min(300, c.menottes_artisanales_evasion_attente_secondes));
+        c.menottes_artisanales_casse_pourcent = Math.max(0, Math.min(100, c.menottes_artisanales_casse_pourcent));
         c.fouille_delai_secondes = Math.max(0, Math.min(30, c.fouille_delai_secondes));
         c.fouille_portee = Math.max(2, Math.min(8, c.fouille_portee));
         if (c.fouille_objets_illegaux == null) c.fouille_objets_illegaux = def.fouille_objets_illegaux;

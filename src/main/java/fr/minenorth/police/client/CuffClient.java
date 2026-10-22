@@ -114,6 +114,8 @@ public final class CuffClient {
                 return;
             }
             if (!localCuffed()) return;
+            // Menottes artisanales : un clic droit maintenu = tentative de se libérer (le serveur compte et décide).
+            if (e.isUseItem() && mc.player != null && artisanal(mc.player.getUUID())) ModNetwork.CHANNEL.sendToServer(new ModNetwork.CuffStrugglePacket());
             e.setCanceled(true);
             e.setSwingHand(false);
         }

@@ -56,7 +56,7 @@ public final class ModNetwork {
             A_UNCUFF = 30;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "12";
+    private static final String PROTOCOL = "13";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -76,6 +76,7 @@ public final class ModNetwork {
         CHANNEL.registerMessage(id++, CuffSeatedPacket.class, (p, b) -> {}, b -> new CuffSeatedPacket(), CuffSeatedPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         CHANNEL.registerMessage(id++, CuffMenuOpenPacket.class, CuffMenuOpenPacket::encode, CuffMenuOpenPacket::decode, CuffMenuOpenPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT));
         CHANNEL.registerMessage(id++, CuffMenuActionPacket.class, CuffMenuActionPacket::encode, CuffMenuActionPacket::decode, CuffMenuActionPacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
+        CHANNEL.registerMessage(id++, CuffStrugglePacket.class, (p, b) -> {}, b -> new CuffStrugglePacket(), CuffStrugglePacket::handle, java.util.Optional.of(net.minecraftforge.network.NetworkDirection.PLAY_TO_SERVER));
         id = PhoneNet.register(CHANNEL, id);   // application « téléphone » (état + ouverture)
     }
 
@@ -231,6 +232,14 @@ public final class ModNetwork {
         static CuffMenuActionPacket decode(FriendlyByteBuf b) { return new CuffMenuActionPacket(b.readVarInt(), b.readUUID(), b.readUtf(96), b.readVarInt()); }
         static void handle(CuffMenuActionPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.menuAction(sp, p.action, p.target, p.reason, p.minutes); });
+            c.get().setPacketHandled(true);
+        }
+    }
+
+    /** Client -> serveur : le menotté (artisanal) se débat (clic droit maintenu). Le serveur compte le temps réel de maintien et tout revérifie. */
+    public record CuffStrugglePacket() {
+        static void handle(CuffStrugglePacket p, Supplier<NetworkEvent.Context> c) {
+            c.get().enqueueWork(() -> { ServerPlayer sp = c.get().getSender(); if (sp != null) fr.minenorth.police.cuff.CuffService.struggle(sp); });
             c.get().setPacketHandled(true);
         }
     }

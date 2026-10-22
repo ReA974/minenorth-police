@@ -224,6 +224,7 @@ public final class CuffService {
         if (it == ModItems.SAC_JUTE.get()) return hoodAction(actor, target, st, ts);
         if (!cuffed) return ts != null && ts.hooded && st.isEmpty() && unhood(actor, target, ts);
         if (actor.isShiftKeyDown()) return openMenu(actor, target, ts, "", true);
+        if (st.isEmpty() && ts.type == ARTISANAL && !handler(actor, ts)) return startFree(actor, target);
         if (st.isEmpty()) return escortAction(actor, target, ts);
         return false;
     }
@@ -316,7 +317,10 @@ public final class CuffService {
     }
 
     /** Libère un joueur (menottes et sac). by = qui récupère les menottes (sinon elles tombent au sol). */
-    public static boolean release(ServerPlayer target, @Nullable ServerPlayer by, String why, boolean giveBack) {
+    public static boolean release(ServerPlayer target, @Nullable ServerPlayer by, String why, boolean giveBack) { return release(target, by, why, giveBack, false); }
+
+    /** breakable : menottes artisanales défaites ou arrachées, elles peuvent casser (config menottes_artisanales_casse_pourcent). */
+    public static boolean release(ServerPlayer target, @Nullable ServerPlayer by, String why, boolean giveBack, boolean breakable) {
         State s = STATES.get(target.getUUID());
         if (s == null) return false;
         MinecraftServer srv = target.server;
@@ -332,7 +336,9 @@ public final class CuffService {
         target.getPersistentData().remove(TAG);
         if (wasCuffed) {
             Item item = s.type == POLICE ? ModItems.MENOTTES_POLICE.get() : ModItems.MENOTTES_ARTISANALES.get();
-            giveOrDrop(giveBack ? by : null, target, new ItemStack(item));
+            if (breakable && s.type == ARTISANAL && target.getRandom().nextInt(100) < PoliceConfig.get().menottes_artisanales_casse_pourcent) {
+                if (by != null) say(by, "§7Les menottes artisanales se sont cassées.");
+            } else giveOrDrop(giveBack ? by : null, target, new ItemStack(item));
             target.level().playSound(null, target.blockPosition(), SoundEvents.IRON_TRAPDOOR_OPEN, SoundSource.PLAYERS, 0.8f, 1.5f);
             tell(target, "§aVos menottes sont retirées" + (why.isEmpty() ? "." : " (" + why + ")."));
             if (by != null && by != target) say(by, "§a" + name(srv, target.getUUID()) + " est libéré.");
@@ -352,6 +358,83 @@ public final class CuffService {
         if (st.isEmpty()) return;
         if (to != null && to.isAlive() && to.getInventory().add(st)) return;
         at.drop(st, false);
+    }
+
+    // ------------------------------------------------------------------ menottes artisanales : retrait à mains nues et évasion
+    private record Freeing(UUID target, int startTick, Vec3 origin) {}
+    private static final Map<UUID, Freeing> FREEING = new HashMap<>();
+    private record Struggle(int count, int last) {}
+    private static final Map<UUID, Struggle> STRUGGLE = new HashMap<>();
+    private static final Map<UUID, Integer> COOLDOWN = new HashMap<>();
+
+    /** Un autre joueur défait les menottes artisanales à mains nues : il doit rester immobile à portée pendant quelques secondes. */
+    private static boolean startFree(ServerPlayer actor, ServerPlayer target) {
+        PoliceConfig cfg = PoliceConfig.get();
+        if (!near(actor, target, cfg.menottes_portee)) { say(actor, "§cApprochez-vous."); return true; }
+        if (FREEING.containsKey(actor.getUUID())) return true;
+        FREEING.put(actor.getUUID(), new Freeing(target.getUUID(), actor.server.getTickCount(), actor.position()));
+        say(actor, "§eVous défaites les menottes artisanales... (ne bougez pas)");
+        tell(target, "§e" + name(actor.server, actor.getUUID()) + " essaie de défaire vos menottes.");
+        return true;
+    }
+
+    private static void tickFreeing(MinecraftServer s, int now) {
+        PoliceConfig cfg = PoliceConfig.get();
+        for (Map.Entry<UUID, Freeing> en : new ArrayList<>(FREEING.entrySet())) {
+            ServerPlayer a = online(s, en.getKey());
+            Freeing f = en.getValue();
+            ServerPlayer t = online(s, f.target);
+            State ts = t == null ? null : STATES.get(f.target);
+            String fail = null;
+            if (a == null || t == null || !a.isAlive() || isCuffed(a.getUUID()) || ts == null || !ts.cuffed || ts.type != ARTISANAL) fail = "";
+            else if (!near(a, t, cfg.menottes_portee + 0.75)) fail = "Vous vous êtes éloigné : tentative interrompue.";
+            else if (a.position().subtract(f.origin).horizontalDistance() > 0.8) fail = "Vous avez bougé : tentative interrompue.";
+            if (fail != null) {
+                FREEING.remove(en.getKey());
+                if (a != null && !fail.isEmpty()) say(a, "§c" + fail);
+                continue;
+            }
+            int total = cfg.menottes_artisanales_retrait_secondes * 20, done = now - f.startTick;
+            if (done >= total) {
+                FREEING.remove(en.getKey());
+                release(t, a, "défaites par " + name(s, a.getUUID()), true, true);
+            } else if (done % 4 == 0) {
+                int bars = 12, on = Math.min(bars, done * bars / Math.max(1, total));
+                say(a, "§eRetrait §8[§a" + "|".repeat(on) + "§7" + "|".repeat(bars - on) + "§8]");
+            }
+        }
+    }
+
+    /** Le menotté (artisanal) se débat : clic droit maintenu, durée cumulée ; abandon = reprise à zéro et attente. Les menottes de police ne cèdent jamais. */
+    public static void struggle(ServerPlayer p) {
+        PoliceConfig cfg = PoliceConfig.get();
+        State ts = STATES.get(p.getUUID());
+        if (ts == null || !ts.cuffed || ts.type != ARTISANAL || !p.isAlive()) return;
+        int now = p.server.getTickCount();
+        Struggle s = STRUGGLE.get(p.getUUID());
+        if (s != null && now - s.last > 12) {             // il a lâché : tentative abandonnée, attente avant la suivante
+            if (s.count > 0) COOLDOWN.put(p.getUUID(), s.last + 12 + cfg.menottes_artisanales_evasion_attente_secondes * 20);
+            s = null;
+        }
+        Integer cool = COOLDOWN.get(p.getUUID());
+        if (cool != null && cool > now) { say(p, "§7Vous reprenez votre souffle (" + ((cool - now) / 20 + 1) + " s)..."); return; }
+        if (s != null && now - s.last < 3) return;         // cadence bornée : un client modifié ne va pas plus vite
+        int count = (s == null ? 0 : s.count) + 1;
+        int total = Math.max(1, cfg.menottes_artisanales_evasion_secondes * 20 / 4);
+        if (count >= total) {
+            STRUGGLE.remove(p.getUUID());
+            release(p, null, "vous vous êtes libéré", false, true);
+            return;
+        }
+        STRUGGLE.put(p.getUUID(), new Struggle(count, now));
+        int bars = 12, on = Math.min(bars, count * bars / total);
+        say(p, "§eVous tirez sur les menottes §8[§a" + "|".repeat(on) + "§7" + "|".repeat(bars - on) + "§8]");
+    }
+
+    /** Un coup reçu interrompt le retrait en cours et l'évasion. */
+    @SubscribeEvent
+    public static void hurt(net.minecraftforge.event.entity.living.LivingHurtEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p) { FREEING.remove(p.getUUID()); STRUGGLE.remove(p.getUUID()); }
     }
 
     // ------------------------------------------------------------------ sac de jute
@@ -661,6 +744,7 @@ public final class CuffService {
         if (STATES.isEmpty() && PENDING.isEmpty()) return;
         int now = s.getTickCount();
         if (!PENDING.isEmpty()) tickPending(s, now);
+        if (!FREEING.isEmpty()) tickFreeing(s, now);
         if (!ESCORT.isEmpty()) tickEscort(s);
         if (now % 5 == 0 && !SEAT.isEmpty()) tickSeats(s);
         if (now % 3 == 0) tickDisarm(s);
