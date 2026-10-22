@@ -638,7 +638,11 @@ public final class PoliceService {
             case ModNetwork.A_ALERTS -> sendAlerts(p, "", true);
             case ModNetwork.A_CALL_GUIDE -> guideCall(p, k.a());
             case ModNetwork.A_BOARD -> { if (known) { R r = board(p, d, t, k.n() == 1); sendDossier(p, t, r.msg(), r.ok()); } }
-            case ModNetwork.A_DUTY -> { setDuty(s, p.getUUID(), !onDuty(p.getUUID())); reopen(p, k.n(), rank); }
+            case ModNetwork.A_DUTY -> {
+                if (onDuty(p.getUUID()) && !fr.minenorth.police.compat.CasierHook.allowLeave(p)) { reopen(p, k.n(), rank); break; }
+                setDuty(s, p.getUUID(), !onDuty(p.getUUID()));
+                reopen(p, k.n(), rank);
+            }
             case ModNetwork.A_PHONE -> { Compat.setPhone(p, Compat.phoneState(p) != 2); reopen(p, k.n(), rank); }
             case ModNetwork.A_DISPATCH -> {
                 if (isDispatcher(p)) sendDispatch(p, "", true);
