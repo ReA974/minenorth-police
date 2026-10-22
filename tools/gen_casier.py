@@ -18,10 +18,7 @@ MODID = "minenorth_casier"
 
 # nom du bloc -> (couleur de peinture, libelle de la plaque, couleur d'accent de la plaque)
 VARIANTS = {
-    "police": ((38, 78, 168), "POLICE", (240, 240, 250)),
-    "pompier": ((184, 36, 30), "POMPIERS", (255, 214, 64)),
-    "ambulance": ((34, 150, 84), "SECOURS", (245, 245, 245)),
-    "service": ((118, 128, 138), "SERVICE", (255, 190, 60)),
+    "service": ((86, 104, 128), "SERVICE", (255, 190, 60)),
 }
 PX = 4  # pixels par unite d'UV
 

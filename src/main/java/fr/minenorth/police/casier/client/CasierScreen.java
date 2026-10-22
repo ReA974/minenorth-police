@@ -36,10 +36,10 @@ public class CasierScreen extends Screen {
 
     private void rebuild() {
         clearWidgets();
-        h = v.admin() ? 262 : 226;
+        h = v.admin() ? 292 : 250;
         left = (width - W) / 2;
         top = Math.max(6, (height - h) / 2);
-        int x = left + 14, bw = W - 28, y = top + h - (v.admin() ? 92 : 56);
+        int x = left + 14, bw = W - 28, y = top + 170;
         switch (v.state()) {
             case 1 -> btn(x, y, bw, 20, "casier.btn.prendre", MineNorthStyle.GREEN, true, 1);
             case 2 -> {
@@ -53,12 +53,15 @@ public class CasierScreen extends Screen {
             case 4 -> btn(x, y, bw, 20, "casier.btn.terminer", MineNorthStyle.PINK, true, 4);
             default -> { }
         }
+        if (v.state() >= 1 && v.state() <= 4) {
+            addRenderableWidget(new MineNorthButton(x, y + 24, bw, 16, Component.translatable("casier.btn.perso"), MineNorthStyle.CYAN, () -> act(6)));
+        }
         if (v.pending() > 0) {
-            addRenderableWidget(new MineNorthButton(x, y + 24, bw, 16, Component.translatable("casier.btn.attente", v.pending()), MineNorthStyle.DARK, () -> act(5)));
+            addRenderableWidget(new MineNorthButton(x, y + 44, bw, 16, Component.translatable("casier.btn.attente", v.pending()), MineNorthStyle.DARK, () -> act(5)));
         }
         if (v.admin()) {
             int ay = top + h - 44;
-            addRenderableWidget(new MineNorthButton(x, ay, bw / 2 - 3, 16, Component.translatable("casier.btn.service", v.svcName()), MineNorthStyle.DARK, () -> act(10)));
+            addRenderableWidget(new MineNorthButton(x, ay, bw / 2 - 3, 16, Component.translatable("casier.btn.service", font.plainSubstrByWidth(v.svcName(), 70)), MineNorthStyle.DARK, () -> act(10)));
             addRenderableWidget(new MineNorthButton(x + bw / 2 + 3, ay, bw / 2 - 3, 16, Component.translatable("casier.btn.stuff"), MineNorthStyle.DARK, () -> act(11)));
             addRenderableWidget(new MineNorthButton(x, ay + 20, bw / 3 - 3, 16, Component.translatable("casier.btn.consigne", v.consigne()), MineNorthStyle.DARK, () -> act(12)));
             addRenderableWidget(new MineNorthButton(x + bw / 3 + 1, ay + 20, bw * 2 / 3 - 1, 16, Component.translatable("casier.btn.fichier"), MineNorthStyle.DARK, () -> act(13)).enabled(v.override()));
@@ -94,7 +97,7 @@ public class CasierScreen extends Screen {
             if (v.state() == 2 && v.freeLeave() && v.foreign().isEmpty()) g.drawString(f, I18n("casier.tablette"), x, ly + 66, MineNorthStyle.MUTED, false);
         }
         if (!v.message().isEmpty()) {
-            g.drawString(f, f.plainSubstrByWidth(v.message(), W - 28), x, top + h - (v.admin() ? 108 : 72), MineNorthStyle.WARN, false);
+            g.drawString(f, f.plainSubstrByWidth(v.message(), W - 28), x, top + 154, MineNorthStyle.WARN, false);
         }
         super.render(g, mx, my, pt);
     }

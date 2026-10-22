@@ -124,10 +124,10 @@ Secours, Entreprises, Curios et ZeroContact sont lus par l'API MineNorth ou par 
 
 ### Fonctionnement
 
-1. **Bloc « Casier de service »** : vestiaire métallique de 2 blocs de haut, 4 couleurs (police bleu, pompier rouge, secours vert, service gris), plaque du service,
-   portes qui s'ouvrent en 3 temps (animation par états de bloc). Posé par un OP, ou par le **chef du service** si la config l'autorise. Chaque casier est relié à un service
-   (par défaut celui de sa couleur ; un OP / chef le change avec le bouton « Service » de l'écran admin). Seuls les membres **en service** de ce service l'utilisent.
-2. **Prise d'équipement** : le joueur prend son service comme d'habitude (tablette ou accueil), puis clique droit sur un casier de son service et « Prendre mon équipement ».
+1. **Bloc « Casier de service »** : UN seul casier (vestiaire métallique de 2 blocs, plaque, portes qui s'ouvrent en 3 temps). Les anciens casiers police / pompier / ambulance sont remplacés
+   automatiquement par ce bloc (migration par alias de registre, le service relié reste dans le bloc). Posé par un OP ou par le **chef du service** (config), qui le relie alors à son service ;
+   un OP change le service avec le bouton « Service » de l'écran admin. Seuls les membres du service l'utilisent.
+2. **Prise d'équipement** : le joueur clique droit sur un casier de son service et « Prendre mon équipement » : **il prend son service directement au casier** (clé `prise_de_service_au_casier`, vraie par défaut ; la tablette et l'accueil marchent toujours).
    Le serveur **sauvegarde tout son inventaire civil** (inventaire, barre d'action, armure, seconde main, Curios si le mod est présent, pas l'XP) sur disque,
    le vide, puis lui donne le stuff du métier. Chaque objet donné est marqué (NBT `service`).
 3. **Pendant le service** : l'équipement marqué ne peut être ni jeté, ni rangé dans un coffre / ender chest / établi / cheval (le serveur le reprend dans le conteneur), ni posé dans un cadre,
@@ -140,6 +140,9 @@ Secours, Entreprises, Curios et ZeroContact sont lus par l'API MineNorth ou par 
      si le joueur n'a plus rien d'étranger, c'est accepté et le serveur fait la restitution tout seul (config `fin_de_service_sans_casier_si_rien_d_etranger_sur_soi`, défaut vrai).
 5. **Écran admin du casier** (clic droit **accroupi**, OP ou chef du service) : changer le service relié, **modifier le stuff** (cases fantômes : on clique avec un objet pour le copier,
    rien n'est retiré de l'inventaire de l'admin), ouvrir la **consigne** (objets saisis et déposés, une personne à la fois), « Revenir au stuff du fichier ».
+
+**Mon rangement** : à tout moment (en service ou non), le joueur dépose au casier ce qu'il veut dans 27 cases personnelles (sauf l'équipement de service) et le reprend quand il veut.
+Paramètres par défaut qui ne bloquent pas l'inventaire : `ramassage = LIBRE`, objets étrangers rendus au joueur (`CIVIL`) ; `SAC` et `CONSIGNE` restent disponibles.
 
 Aucune commande : tout passe par les écrans. Un OP est soumis aux mêmes règles de gameplay que les autres (il doit être membre du service pour utiliser un casier).
 

@@ -28,9 +28,9 @@ public class ServiceScreen extends AbstractContainerScreen<ServiceMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics g, int mx, int my) {
-        g.drawString(font, title, 8, 6, MineNorthStyle.WHITE, false);
+        g.drawString(font, font.plainSubstrByWidth(title.getString(), imageWidth - 16), 8, 6, MineNorthStyle.WHITE, false);
         g.drawString(font, playerInventoryTitle, 8, inventoryLabelY, MineNorthStyle.MUTED, false);
-        if (menu.ghost) g.drawString(font, Component.translatable("menu.minenorth_casier.astuce"), 70, inventoryLabelY, MineNorthStyle.WARN, false);
+        if (menu.ghost) g.drawString(font, Component.translatable("menu.minenorth_casier.astuce"), 62, inventoryLabelY, MineNorthStyle.WARN, false);
     }
 
     @Override

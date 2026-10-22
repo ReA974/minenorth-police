@@ -6,9 +6,6 @@ ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "
 
 LANG = {
     "itemGroup.minenorth_casier": "Casiers de service",
-    "block.minenorth_casier.casier_police": "Casier de police",
-    "block.minenorth_casier.casier_pompier": "Casier de pompiers",
-    "block.minenorth_casier.casier_ambulance": "Casier de secours",
     "block.minenorth_casier.casier_service": "Casier de service",
     "item.minenorth_casier.sac_saisie": "Sac de saisie",
     "item.minenorth_casier.sac_saisie.desc": "Reçoit les preuves et objets ramassés en service.",
@@ -26,6 +23,8 @@ LANG = {
     "casier.btn.reprendre": "Reprendre mon équipement",
     "casier.btn.deposer": "Déposer mes affaires",
     "casier.btn.terminer": "Terminer mon service",
+    "casier.btn.perso": "Mon rangement (déposer ce que je veux)",
+    "menu.minenorth_casier.perso": "Mon rangement",
     "casier.btn.attente": "Récupérer mes affaires en attente (%s)",
     "casier.btn.service": "Service : %s",
     "casier.btn.stuff": "Modifier le stuff",
@@ -34,7 +33,7 @@ LANG = {
     "casier.tooltip.service": "Équipement de service : ni jeté, ni rangé, ni donné",
     "menu.minenorth_casier.stuff": "Stuff : %s",
     "menu.minenorth_casier.consigne": "Consigne : %s",
-    "menu.minenorth_casier.astuce": "Clic avec un objet = copie",
+    "menu.minenorth_casier.astuce": "Clic + objet = copie",
 }
 
 os.makedirs(ASSETS, exist_ok=True)
