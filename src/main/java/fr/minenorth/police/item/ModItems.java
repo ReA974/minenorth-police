@@ -57,7 +57,7 @@ public final class ModItems {
     /** Sac de jute : sur la tête d'un joueur menotté ou à genoux ; le retirer demande le clic droit d'un autre joueur avec le sac en main. */
     public static final RegistryObject<Item> SAC_JUTE = ITEMS.register("sac_de_jute", () -> new TipItem(new Item.Properties().stacksTo(8),
             "§8Clic droit sur un joueur menotté ou à genoux : lui mettre le sac sur la tête (vision presque nulle).",
-            "§8Clic droit avec le sac sur un joueur encagoulé : lui retirer."));
+            "§8Clic droit sur un encagoulé avec le sac, la clé (menotté) ou la main vide (non menotté) : lui retirer."));
     public static final RegistryObject<Item> CARTOUCHE_TASER = ITEMS.register("cartouche_taser", () -> new Item(new Item.Properties().stacksTo(64)));
 
     /** Onglet « Police MineNorth » du menu créatif. */

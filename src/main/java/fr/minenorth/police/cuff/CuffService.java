@@ -222,7 +222,7 @@ public final class CuffService {
         if (it == ModItems.MENOTTES_ARTISANALES.get()) return cuffAction(actor, target, st, ARTISANAL, cuffed ? ts : null);
         if (it == ModItems.CLE_MENOTTES.get()) return keyAction(actor, target, ts);
         if (it == ModItems.SAC_JUTE.get()) return hoodAction(actor, target, st, ts);
-        if (!cuffed) return false;
+        if (!cuffed) return ts != null && ts.hooded && st.isEmpty() && unhood(actor, target, ts);
         if (actor.isShiftKeyDown()) return searchAction(actor, target, ts);
         if (st.isEmpty()) return escortAction(actor, target, ts);
         return false;
@@ -306,8 +306,10 @@ public final class CuffService {
 
     // ------------------------------------------------------------------ libérer
     private static boolean keyAction(ServerPlayer actor, ServerPlayer target, @Nullable State ts) {
+        if (ts != null && ts.hooded && !ts.cuffed) return unhood(actor, target, ts);
         if (ts == null || !ts.cuffed) { say(actor, "§7Ce joueur n'est pas menotté."); return true; }
         if (!near(actor, target, PoliceConfig.get().menottes_portee + 0.5)) { say(actor, "§cApprochez-vous."); return true; }
+        if (ts.hooded && handler(actor, ts)) return unhood(actor, target, ts);
         if (!handler(actor, ts)) { say(actor, "§cVous n'avez pas le droit de libérer ce joueur."); return true; }
         release(target, actor, "libérées par " + name(actor.server, actor.getUUID()), true);
         return true;
@@ -356,13 +358,7 @@ public final class CuffService {
     private static boolean hoodAction(ServerPlayer actor, ServerPlayer target, ItemStack st, @Nullable State ts) {
         PoliceConfig cfg = PoliceConfig.get();
         if (!near(actor, target, cfg.menottes_portee + 0.5)) { say(actor, "§cApprochez-vous."); return true; }
-        if (ts != null && ts.hooded) {
-            removeHood(target, ts, actor, false);
-            if (!ts.cuffed) { STATES.remove(target.getUUID()); persist(target); }
-            say(actor, "§aVous retirez le sac de la tête de " + name(actor.server, target.getUUID()) + ".");
-            broadcast(actor.server);
-            return true;
-        }
+        if (ts != null && ts.hooded) return unhood(actor, target, ts);
         boolean ok = (ts != null && ts.cuffed) || surrendered(target);
         if (!ok) { say(actor, "§7Le joueur doit être menotté, à genoux ou inconscient."); return true; }
         if (ts == null) { ts = new State(); ts.captor = actor.getUUID(); ts.captorName = name(actor.server, actor.getUUID()); STATES.put(target.getUUID(), ts); }
@@ -376,6 +372,15 @@ public final class CuffService {
         target.level().playSound(null, target.blockPosition(), SoundEvents.WOOL_PLACE, SoundSource.PLAYERS, 1.0f, 0.8f);
         tell(target, "§cUn sac de jute vous est enfilé sur la tête. Vous n'y voyez presque plus.");
         say(actor, "§aVous avez mis le sac sur la tête de " + name(actor.server, target.getUUID()) + ".");
+        broadcast(actor.server);
+        return true;
+    }
+
+    private static boolean unhood(ServerPlayer actor, ServerPlayer target, State ts) {
+        if (!near(actor, target, PoliceConfig.get().menottes_portee + 0.5)) { say(actor, "§cApprochez-vous."); return true; }
+        removeHood(target, ts, actor, false);
+        if (!ts.cuffed) { STATES.remove(target.getUUID()); persist(target); }
+        say(actor, "§aVous retirez le sac de la tête de " + name(actor.server, target.getUUID()) + ".");
         broadcast(actor.server);
         return true;
     }
