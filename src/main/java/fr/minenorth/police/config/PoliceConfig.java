@@ -55,7 +55,7 @@ public final class PoliceConfig {
     public List<String> kit_equipement = new ArrayList<>(List.of(
             "minenorthpolice:radar_main 1", "minenorthpolice:detecteur_metaux 1", "minenorthpolice:taser 1",
             "minenorthpolice:cartouche_taser 16", "minenorthpolice:test_salivaire 8",
-            "minenorthpolice:menottes_police 2", "minenorthpolice:cle_menottes 1"));
+            "minenorthpolice:menottes_police 2"));
 
     // ------------------------------------------------------------------ radars
     /** Portée du radar à main (blocs). */
@@ -122,7 +122,7 @@ public final class PoliceConfig {
     public boolean menottes_liberer_mort = true;
     /** Ralentissement du menotté (pourcentage de vitesse en moins). */
     public int menottes_ralentissement_pourcent = 35;
-    /** Vrai : les menottes de police et la clé sont réservées aux policiers enregistrés (les OP ne sont pas exemptés). */
+    /** Vrai : les menottes de police sont réservées aux policiers enregistrés (les OP ne sont pas exemptés). */
     public boolean menottes_reservees_police = true;
     /** Vrai : les menottes artisanales (illégales, fabriquées par les mafieux) fonctionnent. */
     public boolean menottes_artisanales_actives = true;
@@ -216,6 +216,7 @@ public final class PoliceConfig {
         c.douane_alerte_minutes = Math.max(1, c.douane_alerte_minutes);
         if (c.tag_police == null) c.tag_police = "";
         if (c.kit_equipement == null) c.kit_equipement = def.kit_equipement;
+        c.kit_equipement.removeIf(l -> l != null && l.contains("cle_menottes"));      // ancienne clé de menottes, supprimée
         c.garde_a_vue_max_minutes = Math.max(1, c.garde_a_vue_max_minutes);
         c.prison_max_minutes = Math.max(1, c.prison_max_minutes);
         c.prison_rayon_evasion = Math.max(2, Math.min(64, c.prison_rayon_evasion));

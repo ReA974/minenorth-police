@@ -13,7 +13,9 @@ import net.minecraft.network.chat.Component;
  */
 public class CuffMenuScreen extends Screen {
     private static final int W = 300;
-    private int H() { return p.mini() ? 150 : 232; }
+    private int H() { return p.mini() ? 150 : 262; }
+
+    private String unlockLabel() { return CuffClient.hooded(p.target()) ? "RETIRER LE SAC" : "DÉMENOTTER"; }
     private ModNetwork.CuffMenuOpenPacket p;
     private int left, top;
     private EditBox reason, minutes;
@@ -61,9 +63,8 @@ public class CuffMenuScreen extends Screen {
         int x = left + 14, w = W - 28, half = (w - 8) / 2;
         if (p.mini()) {
             // Menottes illégales : démenotter et véhicule seulement.
-            addRenderableWidget(new MineNorthButton(x, top + 54, w, 22, Component.literal("DÉMENOTTER"), MineNorthStyle.GREEN, () -> act(5)));
-            addRenderableWidget(new MineNorthButton(x, top + 82, half, 22, Component.literal("MONTER EN VOITURE"), MineNorthStyle.DARK, () -> act(1))).enabled(!p.seated());
-            addRenderableWidget(new MineNorthButton(x + half + 8, top + 82, half, 22, Component.literal("FAIRE SORTIR"), MineNorthStyle.GREEN, () -> act(2))).enabled(p.seated());
+            addRenderableWidget(new MineNorthButton(x, top + 54, w, 22, Component.literal(unlockLabel()), MineNorthStyle.GREEN, () -> act(5)));
+            addRenderableWidget(new MineNorthButton(x, top + 82, w, 22, Component.literal("MONTER EN VOITURE"), MineNorthStyle.DARK, () -> act(1))).enabled(!p.seated());
             addRenderableWidget(new MineNorthButton(x, top + 110, w, 22, Component.literal("FERMER"), 0xFFB3263E, this::onClose));
             return;
         }
@@ -81,7 +82,8 @@ public class CuffMenuScreen extends Screen {
         addRenderableWidget(new MineNorthButton(x, top + 160, half, 22, Component.literal("MONTER EN VOITURE"), MineNorthStyle.DARK, () -> act(1))).enabled(!p.seated());
         addRenderableWidget(new MineNorthButton(x + half + 8, top + 160, half, 22, Component.literal("FAIRE SORTIR"), MineNorthStyle.GREEN, () -> act(2))).enabled(p.seated());
         addRenderableWidget(new MineNorthButton(x, top + 188, half, 22, Component.literal("FOUILLE"), MineNorthStyle.PINK, () -> act(0))).enabled(p.search());
-        addRenderableWidget(new MineNorthButton(x + half + 8, top + 188, half, 22, Component.literal("FERMER"), 0xFFB3263E, this::onClose));
+        addRenderableWidget(new MineNorthButton(x + half + 8, top + 188, half, 22, Component.literal(unlockLabel()), MineNorthStyle.GREEN, () -> act(5)));
+        addRenderableWidget(new MineNorthButton(x, top + 216, w, 22, Component.literal("FERMER"), 0xFFB3263E, this::onClose));
     }
 
     @Override

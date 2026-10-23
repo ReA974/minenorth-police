@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Objet dont tout le comportement est géré côté serveur par {@link fr.minenorth.police.cuff.CuffService} (clic droit sur un joueur) :
- * menottes, clé de menottes, sac de jute. L'objet ne porte que son infobulle.
+ * menottes, sac de jute. L'objet ne porte que son infobulle.
  */
 public class TipItem extends Item {
     private final String[] lines;

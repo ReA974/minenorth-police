@@ -192,9 +192,9 @@ public final class CuffService {
                 if (!Mts.isBuilder(veh)) veh = nearestBuilder(actor);
                 done = veh != null && board(actor, veh);
             } else {
-                // Menottes, clé ou main vide en accroupi sur le véhicule : faire descendre le prisonnier installé à l'intérieur.
+                // Menottes ou main vide en accroupi sur le véhicule : faire descendre le prisonnier installé à l'intérieur.
                 Item held = actor.getMainHandItem().getItem();
-                boolean tool = held == ModItems.MENOTTES_POLICE.get() || held == ModItems.MENOTTES_ARTISANALES.get() || held == ModItems.CLE_MENOTTES.get()
+                boolean tool = held == ModItems.MENOTTES_POLICE.get() || held == ModItems.MENOTTES_ARTISANALES.get()
                         || (actor.getMainHandItem().isEmpty() && actor.isShiftKeyDown());
                 done = tool && dismount(actor);
             }
@@ -218,11 +218,12 @@ public final class CuffService {
         Item it = st.getItem();
         State ts = STATES.get(target.getUUID());
         boolean cuffed = ts != null && ts.cuffed;
+        // Personne menottée assise dans un véhicule : un simple clic la fait descendre (police : le policier ou le ravisseur ; menottes illégales : n'importe qui).
+        if (cuffed && target.isPassenger() && !actor.isShiftKeyDown() && it != ModItems.SAC_JUTE.get() && (ts.type == ARTISANAL || handler(actor, ts))) return dismountTarget(actor, target);
         // Menottes artisanales : tout autre joueur (ni policier ni ravisseur) peut les défaire, mains nues ou avec n'importe quel objet en main.
         if (cuffed && ts.type == ARTISANAL && !handler(actor, ts) && !actor.isShiftKeyDown() && it != ModItems.SAC_JUTE.get()) return startFree(actor, target);
         if (it == ModItems.MENOTTES_POLICE.get()) return cuffAction(actor, target, st, POLICE, cuffed ? ts : null);
         if (it == ModItems.MENOTTES_ARTISANALES.get()) return cuffAction(actor, target, st, ARTISANAL, cuffed ? ts : null);
-        if (it == ModItems.CLE_MENOTTES.get()) return keyAction(actor, target, ts);
         if (it == ModItems.SAC_JUTE.get()) return hoodAction(actor, target, st, ts);
         if (!cuffed) return ts != null && ts.hooded && st.isEmpty() && unhood(actor, target, ts);
         if (actor.isShiftKeyDown()) return openMenu(actor, target, ts, "", true);
@@ -307,16 +308,6 @@ public final class CuffService {
     }
 
     // ------------------------------------------------------------------ libérer
-    private static boolean keyAction(ServerPlayer actor, ServerPlayer target, @Nullable State ts) {
-        if (ts != null && ts.hooded && !ts.cuffed) return unhood(actor, target, ts);
-        if (ts == null || !ts.cuffed) { say(actor, "§7Ce joueur n'est pas menotté."); return true; }
-        if (!near(actor, target, PoliceConfig.get().menottes_portee + 0.5)) { say(actor, "§cApprochez-vous."); return true; }
-        if (ts.hooded && handler(actor, ts)) return unhood(actor, target, ts);
-        if (!handler(actor, ts)) { say(actor, "§cVous n'avez pas le droit de libérer ce joueur."); return true; }
-        release(target, actor, "libérées par " + name(actor.server, actor.getUUID()), true);
-        return true;
-    }
-
     /** Libère un joueur (menottes et sac). by = qui récupère les menottes (sinon elles tombent au sol). */
     public static boolean release(ServerPlayer target, @Nullable ServerPlayer by, String why, boolean giveBack) { return release(target, by, why, giveBack, false); }
 
@@ -521,7 +512,7 @@ public final class CuffService {
         if (target == null || ts == null || !ts.cuffed || target == actor) return;
         boolean mini = ts.type == ARTISANAL;
         if (!mini && !handler(actor, ts)) return;
-        if (mini && action != 1 && action != 2 && action != 5) return;      // menu des menottes illégales : démenotter et véhicule seulement
+        if (mini && action != 1 && action != 5) return;      // menu des menottes illégales : démenotter et monter en voiture seulement
         if (!near(actor, target, cfg.fouille_portee + 1)) { openMenu(actor, target, ts, "Trop loin du prisonnier.", false); return; }
         switch (action) {
             case 0 -> {
@@ -552,7 +543,14 @@ public final class CuffService {
                 openMenu(actor, target, ts, "Il est sorti du véhicule.", true);
             }
             case 5 -> {
-                // Démenotter (menottes illégales) : le ravisseur ou un policier tout de suite, tout autre joueur avec la barre de progression.
+                // Démenotter : d'abord le sac s'il y en a un. Policier ou ravisseur : tout de suite ; tout autre joueur (menottes illégales) : barre de progression.
+                if (ts.hooded && (handler(actor, ts) || mini)) {
+                    removeHood(target, ts, actor, false);
+                    if (!ts.cuffed) { STATES.remove(targetId); persist(target); }
+                    broadcast(actor.server);
+                    openMenu(actor, target, ts, "Sac retiré.", true);
+                    return;
+                }
                 if (handler(actor, ts)) release(target, actor, "retirées par " + name(actor.server, actor.getUUID()), true, false);
                 else startFree(actor, target);
                 ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor),
@@ -641,6 +639,11 @@ public final class CuffService {
             if (d < bd) { bd = d; best = c; }
         }
         if (best == null) return false;
+        return dismountTarget(actor, best);
+    }
+
+    /** Fait descendre ce menotté de son siège (il ne descend jamais seul). */
+    private static boolean dismountTarget(ServerPlayer actor, ServerPlayer best) {
         SEAT.remove(best.getUUID());
         PoliceService.releaseHold(actor.server, best.getUUID());
         if (best.isPassenger()) Mts.unseat(best);
@@ -749,6 +752,15 @@ public final class CuffService {
 
     /** Détention (garde à vue, prison) : les menottes sautent. */
     public static void onJailed(MinecraftServer s, UUID id) { release(s, id, "détention"); }
+
+    /** Migration : la « clé de menottes » n'existe plus ; les anciennes clés (inventaires, coffres) sont retirées proprement, sans erreur. */
+    @SubscribeEvent
+    public static void missing(net.minecraftforge.registries.MissingMappingsEvent e) {
+        for (net.minecraftforge.registries.MissingMappingsEvent.Mapping<net.minecraft.world.item.Item> m
+                : e.getMappings(net.minecraftforge.registries.ForgeRegistries.Keys.ITEMS, MineNorthPolice.MOD_ID)) {
+            if (m.getKey().getPath().equals("cle_menottes")) m.ignore();
+        }
+    }
 
     // ------------------------------------------------------------------ boucle
     @SubscribeEvent

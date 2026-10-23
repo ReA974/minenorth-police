@@ -393,7 +393,6 @@ def write_resources(outdir=None):
     models = {
         "menottes_police": (build_menottes_police(), display_flat((40, 225, 0), 0.95)),
         "menottes_artisanales": (build_menottes_artisanales(), display_flat((40, 225, 0), 0.95)),
-        "cle_menottes": (build_cle(), display_upright((20, 215, 0), 1.0)),
         "sac_de_jute": (build_sac(), display_upright((25, 215, 0), 0.9)),
     }
     for name, (mod, disp) in models.items():
