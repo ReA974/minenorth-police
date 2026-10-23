@@ -218,13 +218,14 @@ public final class CuffService {
         Item it = st.getItem();
         State ts = STATES.get(target.getUUID());
         boolean cuffed = ts != null && ts.cuffed;
+        // Menottes artisanales : tout autre joueur (ni policier ni ravisseur) peut les défaire, mains nues ou avec n'importe quel objet en main.
+        if (cuffed && ts.type == ARTISANAL && !handler(actor, ts) && it != ModItems.SAC_JUTE.get()) return startFree(actor, target);
         if (it == ModItems.MENOTTES_POLICE.get()) return cuffAction(actor, target, st, POLICE, cuffed ? ts : null);
         if (it == ModItems.MENOTTES_ARTISANALES.get()) return cuffAction(actor, target, st, ARTISANAL, cuffed ? ts : null);
         if (it == ModItems.CLE_MENOTTES.get()) return keyAction(actor, target, ts);
         if (it == ModItems.SAC_JUTE.get()) return hoodAction(actor, target, st, ts);
         if (!cuffed) return ts != null && ts.hooded && st.isEmpty() && unhood(actor, target, ts);
         if (actor.isShiftKeyDown()) return openMenu(actor, target, ts, "", true);
-        if (st.isEmpty() && ts.type == ARTISANAL && !handler(actor, ts)) return startFree(actor, target);
         if (st.isEmpty()) return escortAction(actor, target, ts);
         return false;
     }
@@ -609,6 +610,9 @@ public final class CuffService {
     public static void cuffSeated(ServerPlayer actor) {
         PoliceConfig cfg = PoliceConfig.get();
         if (!cfg.menottes_actives || isCuffed(actor.getUUID()) || actor.isSpectator() || !actor.isAlive()) return;
+        // Ctrl + clic droit sur un menotté (assis ou non) : menu du prisonnier, sans rien avoir en main. Même vérification de droits que le shift + clic droit.
+        Entity cuffedTarget = PoliceTool.target(actor, cfg.fouille_portee, 25, e -> e instanceof ServerPlayer p && isCuffed(p.getUUID()));
+        if (cuffedTarget instanceof ServerPlayer ct) { State cs = STATES.get(ct.getUUID()); if (cs != null) openMenu(actor, ct, cs, "", true); return; }
         ItemStack st = actor.getMainHandItem();
         int type = st.is(ModItems.MENOTTES_POLICE.get()) ? POLICE : st.is(ModItems.MENOTTES_ARTISANALES.get()) ? ARTISANAL : -1;
         if (type < 0) return;

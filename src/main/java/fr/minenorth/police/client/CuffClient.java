@@ -104,9 +104,10 @@ public final class CuffClient {
         @SubscribeEvent(priority = EventPriority.HIGHEST)
         public static void click(InputEvent.InteractionKeyMappingTriggered e) {
             Minecraft mc = Minecraft.getInstance();
-            // Ctrl + clic droit avec des menottes : menotter une personne assise dans un véhicule (le serveur choisit et revérifie la cible).
+            // Ctrl + clic droit : menu du prisonnier sur un menotté, ou menottage d'une personne assise dans un véhicule si on tient des menottes
+            // (le serveur choisit la cible et revérifie tout). Le clic vanilla est annulé : pas de double ouverture avec le shift + clic droit.
             if (e.isUseItem() && mc.player != null && net.minecraft.client.gui.screens.Screen.hasControlDown() && !localCuffed()
-                    && (mc.player.getMainHandItem().is(fr.minenorth.police.item.ModItems.MENOTTES_POLICE.get())
+                    && (!FLAGS.isEmpty() || mc.player.getMainHandItem().is(fr.minenorth.police.item.ModItems.MENOTTES_POLICE.get())
                     || mc.player.getMainHandItem().is(fr.minenorth.police.item.ModItems.MENOTTES_ARTISANALES.get()))) {
                 e.setCanceled(true);
                 e.setSwingHand(false);
