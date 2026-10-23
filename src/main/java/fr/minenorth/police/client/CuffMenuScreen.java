@@ -12,7 +12,8 @@ import net.minecraft.network.chat.Component;
  * Affichage seul : le serveur revérifie droits, distance et état de chaque action.
  */
 public class CuffMenuScreen extends Screen {
-    private static final int W = 300, H = 232;
+    private static final int W = 300;
+    private int H() { return p.mini() ? 150 : 232; }
     private ModNetwork.CuffMenuOpenPacket p;
     private int left, top;
     private EditBox reason, minutes;
@@ -56,8 +57,16 @@ public class CuffMenuScreen extends Screen {
     @Override
     protected void init() {
         left = (width - W) / 2;
-        top = Math.max(0, (height - H) / 2);
+        top = Math.max(0, (height - H()) / 2);
         int x = left + 14, w = W - 28, half = (w - 8) / 2;
+        if (p.mini()) {
+            // Menottes illégales : démenotter et véhicule seulement.
+            addRenderableWidget(new MineNorthButton(x, top + 54, w, 22, Component.literal("DÉMENOTTER"), MineNorthStyle.GREEN, () -> act(5)));
+            addRenderableWidget(new MineNorthButton(x, top + 82, half, 22, Component.literal("MONTER EN VOITURE"), MineNorthStyle.DARK, () -> act(1))).enabled(!p.seated());
+            addRenderableWidget(new MineNorthButton(x + half + 8, top + 82, half, 22, Component.literal("FAIRE SORTIR"), MineNorthStyle.GREEN, () -> act(2))).enabled(p.seated());
+            addRenderableWidget(new MineNorthButton(x, top + 110, w, 22, Component.literal("FERMER"), 0xFFB3263E, this::onClose));
+            return;
+        }
         reason = new EditBox(font, x, top + 66, w, 18, Component.literal("Motif"));
         reason.setMaxLength(90);
         reason.setHint(Component.literal("Motif de la détention"));
@@ -79,14 +88,16 @@ public class CuffMenuScreen extends Screen {
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
         String who = p.name().length() > 22 ? p.name().substring(0, 21) + "…" : p.name();
-        MineNorthStyle.panel(g, left, top, W, H, "PRISONNIER", who);
+        MineNorthStyle.panel(g, left, top, W, H(), "PRISONNIER", who);
         int x = left + 14;
-        g.drawString(font, "Motif (garde à vue / prison)", x, top + 54, MineNorthStyle.BLUE, false);
-        g.drawString(font, "Durée en minutes", x, top + 92, MineNorthStyle.BLUE, false);
-        String max = "Max : " + p.gavMax() + " min (garde à vue), " + p.prisonMax() + " min (prison)";
-        g.drawString(font, font.plainSubstrByWidth(max, W - 28 - 80), x + 80, top + 109, MineNorthStyle.MUTED, false);
+        if (!p.mini()) {
+            g.drawString(font, "Motif (garde à vue / prison)", x, top + 54, MineNorthStyle.BLUE, false);
+            g.drawString(font, "Durée en minutes", x, top + 92, MineNorthStyle.BLUE, false);
+            String max = "Max : " + p.gavMax() + " min (garde à vue), " + p.prisonMax() + " min (prison)";
+            g.drawString(font, font.plainSubstrByWidth(max, W - 28 - 80), x + 80, top + 109, MineNorthStyle.MUTED, false);
+        }
         if (!p.msg().isEmpty()) {
-            g.drawString(font, font.plainSubstrByWidth(p.msg(), W - 28), x, top + H - 18, p.ok() ? MineNorthStyle.OK : MineNorthStyle.ALERT, false);
+            g.drawString(font, font.plainSubstrByWidth(p.msg(), W - 28), x, top + H() - 18, p.ok() ? MineNorthStyle.OK : MineNorthStyle.ALERT, false);
         }
         super.render(g, mx, my, pt);
     }

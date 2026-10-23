@@ -219,7 +219,7 @@ public final class CuffService {
         State ts = STATES.get(target.getUUID());
         boolean cuffed = ts != null && ts.cuffed;
         // Menottes artisanales : tout autre joueur (ni policier ni ravisseur) peut les défaire, mains nues ou avec n'importe quel objet en main.
-        if (cuffed && ts.type == ARTISANAL && !handler(actor, ts) && it != ModItems.SAC_JUTE.get()) return startFree(actor, target);
+        if (cuffed && ts.type == ARTISANAL && !handler(actor, ts) && !actor.isShiftKeyDown() && it != ModItems.SAC_JUTE.get()) return startFree(actor, target);
         if (it == ModItems.MENOTTES_POLICE.get()) return cuffAction(actor, target, st, POLICE, cuffed ? ts : null);
         if (it == ModItems.MENOTTES_ARTISANALES.get()) return cuffAction(actor, target, st, ARTISANAL, cuffed ? ts : null);
         if (it == ModItems.CLE_MENOTTES.get()) return keyAction(actor, target, ts);
@@ -501,13 +501,14 @@ public final class CuffService {
 
     private static boolean openMenu(ServerPlayer actor, ServerPlayer target, State ts, String msg, boolean ok) {
         PoliceConfig cfg = PoliceConfig.get();
-        if (!handler(actor, ts)) { say(actor, "§cVous n'avez pas le droit de manipuler ce prisonnier."); return true; }
+        boolean mini = ts.type == ARTISANAL;      // menottes illégales : petit menu pour n'importe quel joueur, sans garde à vue ni fouille
+        if (!mini && !handler(actor, ts)) { say(actor, "§cVous n'avez pas le droit de manipuler ce prisonnier."); return true; }
         if (!near(actor, target, cfg.fouille_portee)) { say(actor, "§cApprochez-vous."); return true; }
-        int rank = PoliceService.rank(actor);
+        int rank = mini ? -1 : PoliceService.rank(actor);
         ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor), new ModNetwork.CuffMenuOpenPacket(
-                target.getUUID(), name(actor.server, target.getUUID()), canSearch(actor, ts), rank >= 0,
+                target.getUUID(), name(actor.server, target.getUUID()), !mini && canSearch(actor, ts), rank >= 0,
                 rank >= 0 && rank <= fr.minenorth.police.data.PoliceData.OFFICIER, target.isPassenger(),
-                cfg.garde_a_vue_max_minutes, cfg.prison_max_minutes, msg, ok));
+                cfg.garde_a_vue_max_minutes, cfg.prison_max_minutes, msg, ok, mini));
         return true;
     }
 
@@ -518,7 +519,9 @@ public final class CuffService {
         ServerPlayer target = online(actor.server, targetId);
         State ts = STATES.get(targetId);
         if (target == null || ts == null || !ts.cuffed || target == actor) return;
-        if (!handler(actor, ts)) return;
+        boolean mini = ts.type == ARTISANAL;
+        if (!mini && !handler(actor, ts)) return;
+        if (mini && action != 1 && action != 2 && action != 5) return;      // menu des menottes illégales : démenotter et véhicule seulement
         if (!near(actor, target, cfg.fouille_portee + 1)) { openMenu(actor, target, ts, "Trop loin du prisonnier.", false); return; }
         switch (action) {
             case 0 -> {
@@ -528,7 +531,7 @@ public final class CuffService {
             case 1 -> {
                 if (target.isPassenger()) { openMenu(actor, target, ts, "Il est déjà dans un véhicule.", false); return; }
                 StringBuilder sb = new StringBuilder();
-                boolean ok = policeRank(actor) && PoliceService.boardMenu(actor, targetId, true, sb);
+                boolean ok = !mini && policeRank(actor) && PoliceService.boardMenu(actor, targetId, true, sb);
                 if (!ok) {
                     Entity veh = Mts.nearestWithPassengerSeat(actor, 8);
                     if (veh == null) { openMenu(actor, target, ts, "Aucun véhicule avec place passager à moins de 8 blocs.", false); return; }
@@ -548,11 +551,18 @@ public final class CuffService {
                 tell(target, "§eVous êtes sorti du véhicule.");
                 openMenu(actor, target, ts, "Il est sorti du véhicule.", true);
             }
+            case 5 -> {
+                // Démenotter (menottes illégales) : le ravisseur ou un policier tout de suite, tout autre joueur avec la barre de progression.
+                if (handler(actor, ts)) release(target, actor, "retirées par " + name(actor.server, actor.getUUID()), true, false);
+                else startFree(actor, target);
+                ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor),
+                        new ModNetwork.CuffMenuOpenPacket(targetId, "", false, false, false, false, 0, 0, "", true, true));
+            }
             case 3, 4 -> {
                 if (!policeRank(actor)) { openMenu(actor, target, ts, "Réservé à la police.", false); return; }
                 fr.minenorth.police.JailService.Result r = fr.minenorth.police.JailService.jail(actor, targetId, action == 3 ? 0 : 1, minutes, reason == null ? "" : reason.trim());
                 if (r.ok()) { say(actor, "§a" + r.msg()); actor.closeContainer(); ModNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> actor),
-                        new ModNetwork.CuffMenuOpenPacket(targetId, "", false, false, false, false, 0, 0, "", true)); }
+                        new ModNetwork.CuffMenuOpenPacket(targetId, "", false, false, false, false, 0, 0, "", true, false)); }
                 else openMenu(actor, target, ts, r.msg(), false);
             }
             default -> {}

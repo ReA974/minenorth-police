@@ -56,7 +56,7 @@ public final class ModNetwork {
             A_UNCUFF = 30;
     public static final UUID NONE = new UUID(0, 0);
 
-    private static final String PROTOCOL = "13";
+    private static final String PROTOCOL = "14";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(MineNorthPolice.MOD_ID, "network"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals);
     private static int id = 0;
@@ -211,14 +211,14 @@ public final class ModNetwork {
 
     /** Serveur -> client : ouvre (ou met à jour) le menu du menotté (shift + clic droit). Les droits affichés ne sont qu'indicatifs : le serveur revérifie. */
     public record CuffMenuOpenPacket(UUID target, String name, boolean search, boolean jail, boolean prison, boolean seated, int gavMax, int prisonMax,
-                                     String msg, boolean ok) {
+                                     String msg, boolean ok, boolean mini) {
         static void encode(CuffMenuOpenPacket p, FriendlyByteBuf b) {
             b.writeUUID(p.target); b.writeUtf(p.name, 64); b.writeBoolean(p.search); b.writeBoolean(p.jail); b.writeBoolean(p.prison);
-            b.writeBoolean(p.seated); b.writeVarInt(p.gavMax); b.writeVarInt(p.prisonMax); b.writeUtf(p.msg, 160); b.writeBoolean(p.ok);
+            b.writeBoolean(p.seated); b.writeVarInt(p.gavMax); b.writeVarInt(p.prisonMax); b.writeUtf(p.msg, 160); b.writeBoolean(p.ok); b.writeBoolean(p.mini);
         }
         static CuffMenuOpenPacket decode(FriendlyByteBuf b) {
             return new CuffMenuOpenPacket(b.readUUID(), b.readUtf(64), b.readBoolean(), b.readBoolean(), b.readBoolean(), b.readBoolean(),
-                    b.readVarInt(), b.readVarInt(), b.readUtf(160), b.readBoolean());
+                    b.readVarInt(), b.readVarInt(), b.readUtf(160), b.readBoolean(), b.readBoolean());
         }
         static void handle(CuffMenuOpenPacket p, Supplier<NetworkEvent.Context> c) {
             c.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> fr.minenorth.police.client.CuffMenuScreen.open(p)));
@@ -226,7 +226,7 @@ public final class ModNetwork {
         }
     }
 
-    /** Client -> serveur : action du menu du menotté (0 fouille, 1 monter en voiture, 2 faire sortir, 3 garde à vue, 4 prison). Tout est revérifié. */
+    /** Client -> serveur : action du menu du menotté (0 fouille, 1 monter en voiture, 2 faire sortir, 3 garde à vue, 4 prison, 5 démenotter). Tout est revérifié. */
     public record CuffMenuActionPacket(int action, UUID target, String reason, int minutes) {
         static void encode(CuffMenuActionPacket p, FriendlyByteBuf b) { b.writeVarInt(p.action); b.writeUUID(p.target); b.writeUtf(p.reason, 96); b.writeVarInt(p.minutes); }
         static CuffMenuActionPacket decode(FriendlyByteBuf b) { return new CuffMenuActionPacket(b.readVarInt(), b.readUUID(), b.readUtf(96), b.readVarInt()); }
