@@ -53,6 +53,22 @@ public final class Compat {
         }
     }
 
+    public static boolean hasPets() { return ModList.get().isLoaded("minenorthpets"); }
+
+    /**
+     * Ouvre chez ce policier le menu Brigade canine du mod Animaux (par réflexion : la tablette fonctionne sans ce mod).
+     * Renvoie "" si le menu est ouvert, sinon le message à afficher sur la tablette.
+     */
+    public static String openK9(net.minecraft.server.level.ServerPlayer p) {
+        if (!hasPets()) return "Le mod Animaux (brigade canine) n'est pas installé sur le serveur.";
+        try {
+            Object r = Class.forName("fr.minenorth.pets.K9Kennel").getMethod("openFromTablet", net.minecraft.server.level.ServerPlayer.class).invoke(null, p);
+            return r instanceof String str ? str : "";
+        } catch (Throwable t) {
+            return "Brigade canine indisponible (mod Animaux à mettre à jour).";
+        }
+    }
+
     /** Ouvre chez ce policier le menu de mise en fourrière du mod Véhicules pour ce véhicule (par réflexion). Faux si impossible. */
     public static boolean openImpound(net.minecraft.server.level.ServerPlayer p, net.minecraft.world.entity.Entity vehicle) {
         if (!hasVehicles()) return false;

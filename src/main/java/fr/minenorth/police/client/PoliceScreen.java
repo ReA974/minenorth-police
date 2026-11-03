@@ -178,6 +178,8 @@ public class PoliceScreen extends Screen {
         more.add(new Nav("Bureau", false, () -> send(ModNetwork.A_DESK, null, "", "", 0, 0)));
         more.add(new Nav("Fourrière", false, () -> send(ModNetwork.A_IMPOUND, null, "", "", 0, 0)));
         more.add(new Nav("Menottes", v.view() == ModNetwork.V_CUFFS, () -> send(ModNetwork.A_CUFFS, null, "", "", 0, 0)));
+        // Brigade canine (mod Animaux) : seul accès au menu du K9 depuis le 02/11 (plus de Ctrl + clic droit).
+        if (PhoneAppClient.pets()) more.add(new Nav("K9", false, () -> send(ModNetwork.A_K9, null, "", "", v.view(), 0)));
         if (v.grade() == 0) more.add(new Nav("Effectifs", v.view() == ModNetwork.V_ROSTER, () -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0)));
         if (v.duty().dispatcher()) more.add(new Nav("Dispatch", v.view() == ModNetwork.V_DISPATCH, () -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0)));
         navRow(main, x, top + 43, w);
@@ -360,9 +362,9 @@ public class PoliceScreen extends Screen {
 
         label("MONTANT (€)", x, y0 + 36, MineNorthStyle.BLUE);
         bAmount = box(x, y0 + 47, 90, "Ex : 150", kAmount, 9);
-        label("POINTS RETIRÉS", x + 100, y0 + 36, officer ? MineNorthStyle.BLUE : MineNorthStyle.MUTED);
-        bPoints = box(x + 100, y0 + 47, 80, !driving ? "Pas de permis" : officer ? "0" : "Officier requis", driving ? kPoints : "", 2);
-        bPoints.setEditable(officer && driving);
+        label("POINTS RETIRÉS", x + 100, y0 + 36, MineNorthStyle.BLUE);
+        bPoints = box(x + 100, y0 + 47, 80, !driving ? "Pas de permis" : "0", driving ? kPoints : "", 2);
+        bPoints.setEditable(driving);   // tous les grades peuvent retirer des points
         btn(x + 190, y0 + 46, w - 190, 20, "METTRE L'AMENDE", MineNorthStyle.GREEN,
                 () -> send(ModNetwork.A_FINE, d.id(), bReason.getValue(), bAmount.getValue(), number(bPoints.getValue()), 0));
 

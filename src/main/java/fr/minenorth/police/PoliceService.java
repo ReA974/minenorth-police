@@ -31,8 +31,8 @@ import java.util.UUID;
  * Logique serveur de la police.
  *
  * Droits par grade :
- *  - Sous-officier : consulter les dossiers, amende simple, note, saisie d'objets, faire une demande, garde à vue.
- *  - Officier      : + amende avec retrait de points, condamnation, avis de recherche, prison, libération anticipée.
+ *  - Sous-officier : consulter les dossiers, amende (avec ou sans retrait de points), note, saisie d'objets, faire une demande, garde à vue.
+ *  - Officier      : + condamnation, avis de recherche, prison, libération anticipée.
  *  - Commissaire   : + accepter/refuser les demandes, gérer les effectifs, supprimer une entrée de casier.
  * Un OP n'a aucun accès à la tablette tant qu'il n'a pas de grade (/police grade).
  */
@@ -91,8 +91,9 @@ public final class PoliceService {
         d.setDirty();
         if (on != null) {
             syncTag(on, true);
-            if (isNew) giveTablet(on);
+            // Plus de tablette donnée au recrutement (02/11) : tout passe par l'application Police du téléphone (/police tablette reste possible).
             on.sendSystemMessage(Component.literal("§bPolice : votre grade est maintenant " + PoliceData.GRADES[g] + "."));
+            if (isNew) on.sendSystemMessage(Component.literal("§7Ouvrez l'application §bPolice§7 de votre téléphone pour accéder aux dossiers, alertes et à votre service."));
         }
         return name + " est maintenant " + PoliceData.GRADES[g] + ".";
     }
@@ -399,14 +400,18 @@ public final class PoliceService {
     }
 
     /** Réaffiche la vue d'où le policier a pris / quitté son poste (les vues à saisie reviennent à la liste). */
-    private static void reopen(ServerPlayer p, int view, int rank) {
+    private static void reopen(ServerPlayer p, int view, int rank) { reopen(p, view, rank, "", true); }
+
+    /** Réaffiche la vue en cours (onglets sans état propre) avec un message. */
+    private static void reopen(ServerPlayer p, int view, int rank, String msg, boolean ok) {
         switch (view) {
-            case ModNetwork.V_REQUESTS -> sendRequests(p, "", true);
-            case ModNetwork.V_RADARS -> sendRadars(p, "", true);
-            case ModNetwork.V_ALERTS -> sendAlerts(p, "", true);
-            case ModNetwork.V_ROSTER -> { if (rank == PoliceData.COMMISSAIRE) sendRoster(p, "", true); else sendList(p, "", true); }
-            case ModNetwork.V_DISPATCH -> { if (isDispatcher(p)) sendDispatch(p, "", true); else sendList(p, "", true); }
-            default -> sendList(p, "", true);
+            case ModNetwork.V_REQUESTS -> sendRequests(p, msg, ok);
+            case ModNetwork.V_RADARS -> sendRadars(p, msg, ok);
+            case ModNetwork.V_ALERTS -> sendAlerts(p, msg, ok);
+            case ModNetwork.V_CUFFS -> sendCuffs(p, msg, ok);
+            case ModNetwork.V_ROSTER -> { if (rank == PoliceData.COMMISSAIRE) sendRoster(p, msg, ok); else sendList(p, msg, ok); }
+            case ModNetwork.V_DISPATCH -> { if (isDispatcher(p)) sendDispatch(p, msg, ok); else sendList(p, msg, ok); }
+            default -> sendList(p, msg, ok);
         }
     }
 
@@ -652,6 +657,8 @@ public final class PoliceService {
                 else sendList(p, "L'onglet DISPATCH est réservé au plus haut gradé en service.", false);
             }
             case ModNetwork.A_DISPATCH_MSG -> { R r = dispatchMessage(p, t, clean(k.a())); sendDispatch(p, r.msg(), r.ok()); }
+            // Brigade canine (mod Animaux) : le menu du K9 s'ouvre à la place de la tablette (n = vue actuelle, pour le message d'erreur).
+            case ModNetwork.A_K9 -> { String err = Compat.openK9(p); if (!err.isEmpty()) reopen(p, k.n(), rank, err, false); }
             // Bureau du commissariat : c'est le mod Accueil Police qui affiche son propre écran à la place de la tablette.
             case ModNetwork.A_DESK -> { if (!Compat.openAccueilDesk(p)) sendList(p, "Le mod Accueil Police n'est pas installé sur le serveur.", false); }
             // Fourrière depuis la tablette : véhicule visé (ou le plus proche, 8 blocs) -> menu du mod Véhicules à la place de la tablette.
@@ -688,7 +695,6 @@ public final class PoliceService {
         if (cents <= 0) return R.err("Montant invalide.");
         if (cents > cfg.maxFineCents()) return R.err("Montant maximum : " + money(cfg.maxFineCents()) + ".");
         if (points < 0 || points > cfg.points_max_par_amende) return R.err("Retrait de points : entre 0 et " + cfg.points_max_par_amende + ".");
-        if (points > 0 && rank > PoliceData.OFFICIER) return R.err("Seuls les Officiers et le Commissaire peuvent retirer des points.");
         if (points > 0 && !Compat.hasPermis()) return R.err("Le mod Permis n'est pas installé : retrait de points impossible.");
         if (points > 0 && !Compat.hasDrivingLicence(p.server, t)) return R.err("Ce citoyen n'a pas de permis de conduire : aucun point à retirer.");
 

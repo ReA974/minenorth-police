@@ -53,7 +53,9 @@ public final class ModNetwork {
             /** Ouvre l'onglet MENOTTES (menottés connectés). */
             A_CUFFS = 29,
             /** Libère à distance le menotté target. */
-            A_UNCUFF = 30;
+            A_UNCUFF = 30,
+            /** Ouvre le menu Brigade canine du mod Animaux (n = vue actuelle, réaffichée avec le message en cas d'échec). */
+            A_K9 = 31;
     public static final UUID NONE = new UUID(0, 0);
 
     private static final String PROTOCOL = "14";

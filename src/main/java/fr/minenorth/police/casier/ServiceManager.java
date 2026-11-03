@@ -52,7 +52,7 @@ public final class ServiceManager {
         CasierData d = CasierData.get(s);
         List<ItemStack> out = new ArrayList<>();
         if (d.stuff.containsKey(service)) {
-            for (ItemStack st : d.stuff.get(service)) if (!st.isEmpty()) out.add(st.copy());
+            for (ItemStack st : d.stuff.get(service)) if (!st.isEmpty() && !isTablet(st)) out.add(st.copy());
             return out;
         }
         List<String> lines = new ArrayList<>();
@@ -66,9 +66,21 @@ public final class ServiceManager {
         }
         for (String l : lines) {
             ItemStack st = parse(l);
-            if (st != null) out.add(st);
+            if (st != null && !isTablet(st)) out.add(st);
         }
         return out;
+    }
+
+    /**
+     * Tablettes de métier (police, secours, entreprise) : plus jamais données avec le stuff depuis le 02/11, on passe par les applications du
+     * téléphone. Filtrées ici pour que les configs et les stuffs déjà réglés en jeu sur le serveur n'en donnent plus non plus.
+     */
+    private static final java.util.Set<String> TABLETS = java.util.Set.of("minenorthpolice:tablette_police", "minenorthsecours:tablette_secours",
+            "minenorthentreprises:tablette_entreprise");
+
+    public static boolean isTablet(ItemStack st) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(st.getItem());
+        return id != null && TABLETS.contains(id.toString());
     }
 
     public static boolean hasOverride(MinecraftServer s, String service) { return CasierData.get(s).stuff.containsKey(service); }

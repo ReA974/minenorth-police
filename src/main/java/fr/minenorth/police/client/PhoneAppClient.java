@@ -22,10 +22,20 @@ public final class PhoneAppClient {
 
     public static void set(boolean v) { visible = v; }
 
-    /** Clic sur l'icône : ferme le téléphone et demande l'ouverture au serveur (qui revérifie le métier). */
+    /** Téléphone MikasRevs Phone 2 présent : à tester AVANT de toucher phone.PhonePolice. */
+    public static boolean phone() { return net.minecraftforge.fml.ModList.get().isLoaded("newphone"); }
+
+    /** Mod Animaux présent : bouton « K9 » (menu Brigade canine) sur la tablette et dans l'application. */
+    public static boolean pets() { return net.minecraftforge.fml.ModList.get().isLoaded("minenorthpets"); }
+
+    /**
+     * Clic sur l'icône : demande l'ouverture au serveur (qui revérifie le métier) ; la réponse ouvre l'application DANS le téléphone
+     * (phone.PhonePoliceScreen). Sans le téléphone : ancien comportement (écran de la tablette).
+     */
     public static void openFromPhone() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
+        if (phone()) { fr.minenorth.police.client.phone.PhonePolice.request(); return; }
         mc.setScreen(null);
         ModNetwork.CHANNEL.sendToServer(new PhoneNet.Open());
     }

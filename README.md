@@ -19,8 +19,8 @@ Clic droit, réservée aux policiers enregistrés. Un OP doit d'abord se donner 
 
 | Grade | Droits |
 |---|---|
-| Sous-officier | dossiers, amende simple, note, saisie d'objets, demandes de perquisition / d'annulation de permis, garde à vue |
-| Officier | + amende avec retrait de points, condamnation, avis de recherche, prison, libération anticipée |
+| Sous-officier | dossiers, amende (retrait de points possible pour tous les grades), note, saisie d'objets, demandes de perquisition / d'annulation de permis, garde à vue |
+| Officier | + condamnation, avis de recherche, prison, libération anticipée |
 | Commissaire | + accepter / refuser les demandes, gérer les effectifs, supprimer une entrée de casier |
 
 ## Configuration
@@ -186,3 +186,10 @@ Le mod compile et se charge, mais **aucun test en jeu n'a été fait** : animati
 Police / Secours et l'accueil, scénarios de crash. La protection ne couvre pas un mod tiers qui prendrait lui-même un objet marqué dans un inventaire (vol, fouille, boutique) :
 le contrôle périodique supprime alors l'objet marqué chez son nouveau porteur, mais ne le rend pas au propriétaire (il le reprend au casier).
 
+
+## Application « Police » dans le téléphone MRPhone + bouton K9 (02/11)
+- L'icône **Police** du téléphone patché ouvre l'application **dans l'écran du téléphone** (`client/phone/PhonePoliceScreen`, sous-classe de `AbstractZPhoneScreen` via `PhoneAppBase`, compilée contre `libs/mrphone-0.9.4.jar` en `compileOnly`), comme Mairie et Mon gang. Onglets : Citoyens (recherche, dossier : fiche, casier, permis / véhicules, actions), Demandes, Alertes (rechargées toutes les 5 s), Radars, Plaques, Menottes, Service (prise de service, téléphone 17, bureau, fourrière, brigade canine), Effectifs (Commissaire), Dispatch (dispatcher). Mêmes paquets que la tablette (`ViewPacket` / `ActionPacket`) : le serveur revérifie tout ; fermeture = `A_CLOSE`. Ouverture : `PhoneAppClient.openFromPhone` → `phone.PhonePolice.request()` (téléphone gardé ouvert), la vue reçue ouvre l'application. `PhoneAppClient.phone()` est testé AVANT tout appel à `client.phone`. Sans MRPhone : écran d'avant.
+- **Brigade canine (K9)** : bouton **K9** de la tablette (2e rangée) et de l'onglet Service de l'application ; action `A_K9` (31, aucun changement de protocole) → `Compat.openK9` appelle par réflexion `fr.minenorth.pets.K9Kennel.openFromTablet` (mod Animaux) ; refus (pas de K9, mod absent) = message sur la vue en cours (`reopen` avec message). Le Ctrl + clic droit dans le vide n'ouvre plus le menu K9.
+- **Non testé en jeu.**
+- **Appli du téléphone recentrée (02/11)** : plus d'onglet Menottes ni de bouton Fourrière (actions faites directement sur la personne ou le véhicule : shift + clic droit, outils). Le **Bureau** (mod Accueil) et le **menu K9** (mod Animaux) s'ouvrent dans le téléphone (chaque mod fournit sa version téléphone).
+- **Plus de tablette donnée automatiquement (02/11)** : ni au recrutement (`setGrade`, remplacé par un message vers l'application Police du téléphone), ni avec le stuff du casier de service (`ServiceManager.template` filtre les tablettes police / secours / entreprise, même dans les stuffs déjà réglés en jeu ; retirées des listes par défaut). `/police tablette` et le panneau admin peuvent toujours en donner une, et la tablette fonctionne toujours. Le kit `/police equipement` ne contenait pas de tablette.

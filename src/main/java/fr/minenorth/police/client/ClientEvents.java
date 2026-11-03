@@ -57,6 +57,25 @@ public final class ClientEvents {
         }
     }
 
+    /**
+     * Pendant qu'on vise (radar aux jumelles, taser épaulé : clic droit maintenu), Minecraft avale les clics gauches sans les signaler
+     * (Minecraft.handleKeybinds vide keyAttack tant qu'un objet est utilisé) : on les lit donc directement à la souris.
+     */
+    @SubscribeEvent
+    public static void mouse(InputEvent.MouseButton.Pre e) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer p = mc.player;
+        if (p == null || mc.screen != null || e.getAction() != org.lwjgl.glfw.GLFW.GLFW_PRESS) return;
+        if (!mc.options.keyAttack.matchesMouse(e.getButton())) return;
+        if (HandRadarItem.scoping(p)) {
+            e.setCanceled(true);
+            if (!p.getCooldowns().isOnCooldown(ModItems.RADAR_MAIN.get())) ModNetwork.CHANNEL.sendToServer(new ModNetwork.RadarMeasurePacket());
+        } else if (TaserItem.aiming(p)) {
+            e.setCanceled(true);
+            if (!p.getCooldowns().isOnCooldown(ModItems.TASER.get())) ModNetwork.CHANNEL.sendToServer(new ModNetwork.TaserFirePacket());
+        }
+    }
+
     /** Viser au taser ne ralentit pas : on annule le ralentissement vanilla de l'utilisation d'un objet (0,2 x 5 = 1). */
     @SubscribeEvent
     public static void move(MovementInputUpdateEvent e) {
