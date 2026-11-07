@@ -3,7 +3,6 @@ package fr.minenorth.police.casier;
 import fr.minenorth.api.PlayerWipeEvent;
 import fr.minenorth.police.casier.block.CasierBlock;
 import fr.minenorth.police.casier.block.CasierBlockEntity;
-import fr.minenorth.police.casier.item.SeizureBagItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -79,33 +78,20 @@ public class CasierEvents {
         }
     }
 
+    /** Ramassage en service : libre (défaut), ou interdit pour ce qui n'est pas de son métier (config). Le sac de saisie n'existe plus. */
     @SubscribeEvent
     public void pickup(EntityItemPickupEvent e) {
         if (!(e.getEntity() instanceof ServerPlayer p)) return;
-        ItemEntity ie = e.getItem();
-        ItemStack st = ie.getItem();
-        boolean in = ServiceManager.inSession(p);
-        if (!in || Marks.is(st)) return;
-        String mode = CasierConfig.RAMASSAGE.get();
-        if (mode.equals("LIBRE")) return;
-        e.setCanceled(true);
-        if (!mode.equals("SAC")) return;
-        Inventory inv = p.getInventory();
-        ItemStack rest = st.copy();
-        boolean hadBag = false;
-        for (int i = 0; i < inv.getContainerSize() && !rest.isEmpty(); i++) {
-            ItemStack bag = inv.getItem(i);
-            if (SeizureBagItem.isBag(bag) && Marks.is(bag)) {
-                hadBag = true;
-                rest = SeizureBagItem.insert(bag, rest);
-            }
-        }
-        if (rest.getCount() != st.getCount()) {
-            if (rest.isEmpty()) ie.discard(); else ie.setItem(rest);
-            p.displayClientMessage(Component.literal("Rangé dans ton sac de saisie : " + st.getHoverName().getString()).withStyle(ChatFormatting.YELLOW), true);
-        } else if (p.tickCount % 20 == 0) {
-            p.displayClientMessage(Component.literal(hadBag ? "Ton sac de saisie est plein." : "Il te faut un sac de saisie pour ramasser en service.").withStyle(ChatFormatting.RED), true);
-        }
+        ItemStack st = e.getItem().getItem();
+        if (!ServiceManager.inSession(p) || Marks.is(st) || ServiceManager.kept(st)) return;
+        if (CasierConfig.RAMASSAGE.get().equals("INTERDIT")) e.setCanceled(true);
+    }
+
+    /** Ancien sac de saisie (retiré le 07/11) : ses exemplaires disparaissent sans erreur au chargement du monde. */
+    @SubscribeEvent
+    public void missing(net.minecraftforge.registries.MissingMappingsEvent e) {
+        net.minecraft.resources.ResourceLocation old = new net.minecraft.resources.ResourceLocation(MineNorthCasier.MOD_ID, "sac_saisie");
+        for (var m : e.getAllMappings(net.minecraftforge.registries.ForgeRegistries.Keys.ITEMS)) if (old.equals(m.getKey())) m.ignore();
     }
 
     /** Accroupi avec un objet en main, le clic droit sur un casier ouvrirait sinon rien : on force l'ouverture (écran admin). */

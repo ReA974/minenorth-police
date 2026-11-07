@@ -19,7 +19,6 @@ public final class CasierConfig {
     public static final ForgeConfigSpec.BooleanValue CHEF_PEUT_POSER;
     public static final ForgeConfigSpec.BooleanValue CHEF_ADMIN;
     public static final ForgeConfigSpec.ConfigValue<String> RAMASSAGE;
-    public static final ForgeConfigSpec.IntValue SAC_CAPACITE;
     public static final ForgeConfigSpec.ConfigValue<String> ETRANGERS_VERS;
     public static final ForgeConfigSpec.ConfigValue<String> MORT_EQUIPEMENT;
     public static final ForgeConfigSpec.IntValue EXPIRATION_HORS_LIGNE;
@@ -38,7 +37,7 @@ public final class CasierConfig {
                 "Fin de service sans passer par le casier si le joueur n'a RIEN d'étranger sur lui (que de l'équipement de service).",
                 "true  : la tablette / l'accueil peut terminer le service, le serveur reprend le stuff et rend l'inventaire civil tout seul.",
                 "false : il faut TOUJOURS passer par un casier pour terminer son service.",
-                "Dans tous les cas, s'il lui reste sur lui du matériel de service ou des affaires étrangères (saisies, preuves, objets civils reçus), le serveur refuse :",
+                "Dans tous les cas, s'il lui reste sur lui du matériel de service ou des affaires étrangères (saisies, objets civils reçus), le serveur refuse :",
                 "« Passe par ton casier : tu as encore des affaires sur toi ».")
                 .define("fin_de_service_sans_casier_si_rien_d_etranger_sur_soi", true);
         PRISE_AU_CASIER = b.comment(
@@ -62,23 +61,21 @@ public final class CasierConfig {
 
         b.comment("=== PENDANT LE SERVICE ===").push("pendant_le_service");
         RAMASSAGE = b.comment("Que fait un joueur en service quand il ramasse un objet qui n'est pas de son métier ?",
-                "SAC      : l'objet va dans son sac de saisie (preuves, saisies) ; sans sac sur lui, il ne peut pas ramasser.",
                 "INTERDIT : il ne ramasse rien.",
-                "LIBRE    : il ramasse normalement (il devra tout déposer au casier à la fin du service).")
+                "LIBRE    : il ramasse normalement (il devra tout déposer au casier à la fin du service).",
+                "(SAC, l'ancien sac de saisie, n'existe plus : il vaut LIBRE.)")
                 .define("ramassage", "LIBRE", o -> o instanceof String s && List.of("SAC", "INTERDIT", "LIBRE").contains(s));
-        SAC_CAPACITE = b.comment("Nombre de piles d'objets que contient un sac de saisie.")
-                .defineInRange("sac_de_saisie_capacite", 27, 1, 120);
-        ETRANGERS_VERS = b.comment("Où vont les objets étrangers déposés au casier (hors contenu du sac de saisie, qui va toujours à la consigne) ?",
+        ETRANGERS_VERS = b.comment("Où vont les objets étrangers déposés au casier ?",
                 "CONSIGNE : à la consigne du service (le chef peut les rendre) : pour un serveur où tout objet ramassé en service est une saisie.",
                 "CIVIL    : rendus au joueur avec son inventaire civil (défaut : on ne bloque pas l'inventaire du joueur).")
                 .define("objets_etrangers_deposes_vers", "CIVIL", o -> o instanceof String s && List.of("CONSIGNE", "CIVIL").contains(s));
         MORT_EQUIPEMENT = b.comment("À la mort en service :",
                 "CASIER  : l'équipement de service disparaît du joueur, il peut le reprendre gratuitement au casier (« Reprendre mon équipement »).",
                 "DETRUIT : l'équipement est perdu pour cette prise de service (il devra terminer son service puis le reprendre).",
-                "Dans les deux cas l'inventaire civil reste sauvegardé et n'est jamais lâché au sol. Le contenu du sac de saisie va à la consigne.")
+                "Dans les deux cas l'inventaire civil reste sauvegardé et n'est jamais lâché au sol.")
                 .define("mort_equipement", "CASIER", o -> o instanceof String s && List.of("CASIER", "DETRUIT").contains(s));
         CONSERVES = b.comment("Objets (identifiants) que le joueur GARDE sur lui en service au lieu de les ranger au casier, et qui ne comptent pas comme « étrangers ».",
-                "Exemple : [\"mrphone:phone\"] pour garder son téléphone. Vide par défaut.")
+                "Toujours gardés, sans rien régler : carte d'identité, carte bancaire, permis, portefeuille et téléphone. Ajoute ici d'autres objets.")
                 .defineListAllowEmpty("objets_conserves", List.of(), o -> o instanceof String);
         b.pop();
 
@@ -91,7 +88,9 @@ public final class CasierConfig {
                 "Les identifiants inconnus (mod absent) sont ignorés. Chaque objet donné est automatiquement marqué « service ».",
                 "Arme TACZ, par exemple : tacz:modern_kinetic_gun|1|{GunId:\"tacz:glock_17\",GunFireMode:\"SEMI\",GunCurrentAmmoCount:17}",
                 "Ces listes sont les valeurs par défaut : l'écran admin du casier (clic droit accroupi, main vide) permet de les modifier en jeu.").push("stuff");
-        STUFF_POLICE = b.comment("Stuff de la police (tenue bleue, matériel, menottes si le mod Police les fournit).")
+        STUFF_POLICE = b.comment("Stuff de la police. Tenue selon le grade : chaque objet gradué (polo, blouson, gilet, casque, brassard « _officier »…) est donné",
+                "dans la version du grade de l'agent (commissaire, officier, sous-officier). Sans tenue graduée dans la liste, le polo et le pantalon de police",
+                "de son grade sont ajoutés et la tenue en cuir est retirée.")
                 .defineList("police", List.of(
                         "minecraft:leather_helmet|1|{display:{color:1713022},Unbreakable:1b}",
                         "minecraft:leather_chestplate|1|{display:{color:1713022},Unbreakable:1b}",
@@ -103,8 +102,7 @@ public final class CasierConfig {
                         "minenorthpolice:cartouche_taser|16",
                         "minenorthpolice:radar_main|1",
                         "minenorthpolice:detecteur_metaux|1",
-                        "minenorthpolice:test_salivaire|8",
-                        "minenorth_casier:sac_saisie|1"), o -> o instanceof String);
+                        "minenorthpolice:test_salivaire|8"), o -> o instanceof String);
         STUFF_POMPIERS = b.comment("Stuff des pompiers / secours / ambulanciers (tenue rouge, trousse, défibrillateur).")
                 .defineList("pompiers", List.of(
                         "minecraft:leather_helmet|1|{display:{color:12000284},Unbreakable:1b}",
@@ -113,8 +111,7 @@ public final class CasierConfig {
                         "minecraft:leather_boots|1|{display:{color:12000284},Unbreakable:1b}",
                         "minenorthsecours:bandage|16",
                         "minenorthsecours:trousse_soins|4",
-                        "minenorthsecours:defibrillateur|1",
-                        "minenorth_casier:sac_saisie|1"), o -> o instanceof String);
+                        "minenorthsecours:defibrillateur|1"), o -> o instanceof String);
         STUFF_AUTRES = b.comment("Stuff des autres services (garde, ambulanciers séparés…), une ligne : identifiant_du_service|identifiant_objet|quantité|NBT facultatif.",
                 "Exemple : garde|minecraft:iron_sword|1")
                 .defineList("autres_services", List.of(), o -> o instanceof String);

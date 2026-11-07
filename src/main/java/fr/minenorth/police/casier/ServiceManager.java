@@ -1,6 +1,5 @@
 package fr.minenorth.police.casier;
 
-import fr.minenorth.police.casier.item.SeizureBagItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -83,6 +82,80 @@ public final class ServiceManager {
         return id != null && TABLETS.contains(id.toString());
     }
 
+    // ------------------------------------------------------------------ tenue selon le grade (police)
+
+    /** Suffixe des tenues graduées (mod Vêtements, ZeroContact) par grade de police : 0 Commissaire, 1 Officier, 2 Sous-officier. */
+    private static final String[] GRADE_SUFFIX = {"commissaire", "officier", "sous_officier"};
+    private static final java.util.regex.Pattern GRADED = java.util.regex.Pattern.compile("sous_officier|commissaire|officier");
+
+    /**
+     * Stuff de la police adapté au grade de l'agent : chaque objet gradué du stuff (polo, blouson, gilet, casque, brassard « _officier »…) est remplacé par
+     * la version de son grade. Si le stuff ne contient aucune tenue graduée, le polo et le pantalon de police de son grade sont ajoutés (et l'ancienne
+     * tenue en cuir est retirée). Sans grade ou sans le mod Vêtements, le stuff reste tel quel.
+     */
+    private static List<ItemStack> forGrade(ServerPlayer p, String service, List<ItemStack> in) {
+        if (!service.equals("police")) return in;
+        int g = fr.minenorth.police.PoliceService.rank(p);
+        if (g < 0 || g >= GRADE_SUFFIX.length) return in;
+        List<ItemStack> out = new ArrayList<>();
+        boolean graded = false;
+        for (ItemStack st : in) {
+            ResourceLocation id = BuiltInRegistries.ITEM.getKey(st.getItem());
+            java.util.regex.Matcher m = GRADED.matcher(id.getPath());
+            if (m.find()) {
+                graded = true;
+                ResourceLocation want = new ResourceLocation(id.getNamespace(), m.replaceFirst(GRADE_SUFFIX[g]));
+                if (BuiltInRegistries.ITEM.containsKey(want)) {
+                    ItemStack c = new ItemStack(BuiltInRegistries.ITEM.get(want), st.getCount());
+                    c.setTag(st.getTag() == null ? null : st.getTag().copy());
+                    st = c;
+                }
+            }
+            out.add(st);
+        }
+        if (graded) return out;
+        ItemStack polo = parse("minenorth_vetements:polo_police_" + GRADE_SUFFIX[g] + "_chestplate|1");
+        ItemStack pant = parse("minenorth_vetements:pantalon_police_leggings|1");
+        if (polo == null) return out;
+        out.removeIf(st -> BuiltInRegistries.ITEM.getKey(st.getItem()).toString().startsWith("minecraft:leather_"));
+        out.add(0, polo);
+        if (pant != null) out.add(1, pant);
+        return out;
+    }
+
+    // ------------------------------------------------------------------ papiers et téléphone : jamais rangés au casier
+
+    /** Cartes (identité, bancaire, permis), portefeuille et téléphone : le joueur les garde sur lui en service, ils ne sont ni rangés ni rendus. */
+    private static final Set<String> KEEP = Set.of("minenorthidentite:identity_card", "minenorth_eurobank:bank_card", "minenorth_permis:permis_card",
+            "minenorthetat:wallet");
+    private static final Set<String> KEEP_MODS = Set.of("newphone", "mrphone", "minenorthphone");
+
+    public static boolean kept(ItemStack st) {
+        if (st.isEmpty() || Marks.is(st)) return false;
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(st.getItem());
+        return KEEP.contains(id.toString()) || KEEP_MODS.contains(id.getNamespace()) || CasierConfig.CONSERVES.get().contains(id.toString());
+    }
+
+    /** Inventaire civil à sauvegarder : tout, sauf ce que le joueur garde sur lui. */
+    private static ListTag civilSave(Inventory inv) {
+        ListTag all = inv.save(new ListTag()), out = new ListTag();
+        for (int i = 0; i < all.size(); i++) if (!kept(ItemStack.of(all.getCompound(i)))) out.add(all.getCompound(i));
+        return out;
+    }
+
+    /** Retire de l'inventaire ce que le joueur garde sur lui (avant de recharger l'inventaire civil, qui efface tout). */
+    private static List<ItemStack> takeKept(ServerPlayer p) {
+        List<ItemStack> out = new ArrayList<>();
+        Inventory inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            if (kept(inv.getItem(i))) {
+                out.add(inv.getItem(i).copy());
+                inv.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        return out;
+    }
+
     public static boolean hasOverride(MinecraftServer s, String service) { return CasierData.get(s).stuff.containsKey(service); }
 
     /** « id|quantité|nbt » -> pile, ou null si l'objet n'existe pas (mod absent) ou la ligne est illisible. */
@@ -109,7 +182,7 @@ public final class ServiceManager {
 
     private static void giveStuff(ServerPlayer p, String service) {
         Inventory inv = p.getInventory();
-        for (ItemStack t : template(p.server, service)) {
+        for (ItemStack t : forGrade(p, service, template(p.server, service))) {
             int left = t.getCount();
             while (left > 0) {
                 ItemStack one = t.copy();
@@ -186,11 +259,11 @@ public final class ServiceManager {
     // ------------------------------------------------------------------ instantané de l'inventaire civil
 
     private static void snapshot(ServerPlayer p, CompoundTag sess) {
-        sess.put("Inv", p.getInventory().save(new ListTag()));
+        sess.put("Inv", civilSave(p.getInventory()));
         ListTag cur = new ListTag();
         for (Curios.SlotRef r : Curios.slots(p)) {
             ItemStack st = r.get();
-            if (st.isEmpty()) continue;
+            if (st.isEmpty() || kept(st)) continue;
             CompoundTag c = new CompoundTag();
             c.putString("Type", r.type());
             c.putBoolean("Cos", r.cosmetic());
@@ -201,9 +274,11 @@ public final class ServiceManager {
         sess.put("Curios", cur);
     }
 
+    /** Vide l'inventaire et le menu G, sauf les papiers et le téléphone que le joueur garde sur lui. */
     private static void clearAll(ServerPlayer p) {
-        p.getInventory().clearContent();
-        for (Curios.SlotRef r : Curios.slots(p)) if (!r.get().isEmpty()) r.set(ItemStack.EMPTY);
+        Inventory inv = p.getInventory();
+        for (int i = 0; i < inv.getContainerSize(); i++) if (!kept(inv.getItem(i))) inv.setItem(i, ItemStack.EMPTY);
+        for (Curios.SlotRef r : Curios.slots(p)) if (!r.get().isEmpty() && !kept(r.get())) r.set(ItemStack.EMPTY);
     }
 
     private static void restoreSnapshot(ServerPlayer p, CompoundTag sess, List<ItemStack> overflow) {
@@ -235,11 +310,11 @@ public final class ServiceManager {
     }
 
     private static boolean foreign(ItemStack st, Set<String> ok) {
-        if (st.isEmpty() || Marks.is(st)) return false;
+        if (st.isEmpty() || Marks.is(st) || kept(st)) return false;
         return !ok.contains(BuiltInRegistries.ITEM.getKey(st.getItem()).toString());
     }
 
-    /** Ce qui n'est pas de son métier sur le joueur : affichage « 3 x Pierre », sac de saisie compris. */
+    /** Ce qui n'est pas de son métier sur le joueur : affichage « 3 x Pierre ». */
     public static List<String> foreignLines(ServerPlayer p) {
         List<String> out = new ArrayList<>();
         Set<String> ok = tolerated();
@@ -247,10 +322,6 @@ public final class ServiceManager {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack st = inv.getItem(i);
             if (foreign(st, ok)) out.add(st.getCount() + " x " + st.getHoverName().getString());
-            else if (SeizureBagItem.isBag(st)) {
-                int n = SeizureBagItem.count(st);
-                if (n > 0) out.add("Sac de saisie : " + n + " objet" + (n > 1 ? "s" : "") + " saisi" + (n > 1 ? "s" : ""));
-            }
         }
         for (Curios.SlotRef r : Curios.slots(p)) {
             if (foreign(r.get(), ok)) out.add(r.get().getCount() + " x " + r.get().getHoverName().getString());
@@ -269,7 +340,7 @@ public final class ServiceManager {
     }
 
     /**
-     * Retire du joueur tout ce qui n'est pas de son métier : sac de saisie -> consigne, le reste -> consigne ou civil (config).
+     * Retire du joueur tout ce qui n'est pas de son métier : vers la consigne ou rendu avec le civil (config).
      * Les objets sont mis en lieu sûr dans les données AVANT la prochaine action.
      */
     public static int deposit(ServerPlayer p, CompoundTag sess) {
@@ -278,20 +349,17 @@ public final class ServiceManager {
         String service = sess.getString("Service");
         boolean toCivil = CasierConfig.ETRANGERS_VERS.get().equals("CIVIL");
         Set<String> ok = tolerated();
-        List<ItemStack> seized = new ArrayList<>();
         List<ItemStack> others = new ArrayList<>();
         Inventory inv = p.getInventory();
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack st = inv.getItem(i);
             if (foreign(st, ok)) { others.add(st.copy()); inv.setItem(i, ItemStack.EMPTY); }
-            else if (SeizureBagItem.isBag(st)) SeizureBagItem.drain(st, seized);
         }
         for (Curios.SlotRef r : Curios.slots(p)) {
             if (foreign(r.get(), ok)) { others.add(r.get().copy()); r.set(ItemStack.EMPTY); }
         }
-        int n = seized.size() + others.size();
+        int n = others.size();
         if (n == 0) return 0;
-        for (ItemStack st : seized) addConsigne(d, service, st);
         if (toCivil) {
             ListTag ex = sess.getList("Extras", Tag.TAG_COMPOUND);
             for (ItemStack st : others) ex.add(st.save(new CompoundTag()));
@@ -341,8 +409,10 @@ public final class ServiceManager {
         }
         deposit(p, sess);
         List<ItemStack> overflow = new ArrayList<>();
+        List<ItemStack> keep = takeKept(p);
         clearAll(p);
         restoreSnapshot(p, sess, overflow);
+        for (ItemStack st : keep) giveOrPend(p, d, st, null);
         for (ItemStack st : readList(sess.getList("Extras", Tag.TAG_COMPOUND))) giveOrPend(p, d, st, overflow);
         for (ItemStack st : overflow) giveOrPend(p, d, st, null);
         s.getPlayerList().saveAll();      // le fichier du joueur contient déjà le civil...
@@ -438,7 +508,7 @@ public final class ServiceManager {
             return;
         }
         // Instantané périmé (crash entre la sauvegarde du casier et celle du joueur) : l'inventaire du fichier est encore le civil.
-        if (sess.getBoolean("Given") && p.getInventory().save(new ListTag()).equals(sess.getList("Inv", Tag.TAG_COMPOUND))) {
+        if (sess.getBoolean("Given") && civilSave(p.getInventory()).equals(sess.getList("Inv", Tag.TAG_COMPOUND))) {
             clearAll(p);
             giveStuff(p, sess.getString("Service"));
             p.sendSystemMessage(Component.literal("§e[Casier] Ton équipement de service a été remis après la coupure."));

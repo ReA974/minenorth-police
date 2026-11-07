@@ -151,6 +151,12 @@ la prise de service **sauvegarde** les cases Curios (normales et cosmétiques) a
 (ou selon l'emplacement choisi par objet : `quantité@inventaire`, `@curios`, `@back`... voir le toml) ; ces cases comptent dans le contrôle des « affaires étrangères » et dans la protection (pas de jet, pas de rangement, nettoyage des drops de mort).
 ZeroContact n'est pas modifié.
 
+### Papiers gardés, tenue selon le grade
+- **Gardés sur soi** à la prise de service (ni rangés, ni rendus) : carte d'identité, carte bancaire, permis, portefeuille et téléphone, plus les objets de `objets_conserves`.
+- **Tenue de police selon le grade** : chaque objet gradué du stuff (`_commissaire`, `_officier`, `_sous_officier` : polo, blouson, gilet, casque, brassard) est donné dans la version du grade de l'agent. Sans tenue graduée dans le stuff, le polo et le pantalon de police de son grade sont ajoutés et la tenue en cuir est retirée.
+- **Plus de sac de saisie** (retiré le 07/11) : les anciens exemplaires disparaissent au chargement, `ramassage = "SAC"` vaut `LIBRE`.
+- **Appli Police du téléphone** : onglet **Menottés** (qui est menotté, par qui, temps restant, bouton Libérer).
+
 ### Cas limites gérés
 
 | Cas | Comportement |
@@ -158,7 +164,7 @@ ZeroContact n'est pas modifié.
 | Déconnexion en service | la session reste ; à la reconnexion le service reprend (le service Police est remis en service automatiquement) |
 | Absence trop longue | après `expiration_hors_ligne_minutes` (30 par défaut, 0 = jamais) : à la reconnexion, restitution automatique de l'inventaire civil |
 | Crash du serveur | la sauvegarde est écrite sur disque **avant** de vider l'inventaire, et l'inventaire du joueur est enregistré **avant** d'effacer la sauvegarde ; un instantané périmé est détecté à la connexion |
-| Mort | civil jamais lâché ; équipement repris au casier ou détruit selon `mort_equipement` ; sac de saisie versé à la consigne |
+| Mort | civil jamais lâché ; équipement repris au casier ou détruit selon `mort_equipement` |
 | Inventaire plein à la restitution | le reste est gardé « en attente » et rendu dès qu'il y a de la place (connexion, toutes les 5 s, ou bouton du casier) |
 | Changement de métier / renvoi | contrôle chaque seconde : plus membre = fin de service automatique avec restitution |
 | Casier détruit / plusieurs casiers | n'importe quel casier du même service convient ; s'il n'en reste aucun, la tablette peut terminer le service (dépôt automatique) |
@@ -177,7 +183,7 @@ Le stuff peut aussi être modifié en jeu (écran admin) : l'écran l'emporte al
 - `tools/gen_casier.py` : textures (PIL), modèles JSON à éléments (UV dans le repère 0-16), états de bloc, modèles d'objets, tables de butin. `python gen_casier.py <dossier>` écrit aussi des rendus de contrôle.
 - `tools/rendu_modele.py` : petit rendu logiciel hors jeu des modèles (mêmes règles de sommets, UV et rotation que le jeu).
 - `tools/gen_lang.py` : `fr_fr` et `en_us` identiques.
-- `docs/apercu-casiers.png` : rendus de contrôle des casiers (fermé, entrouvert, ouvert) et du sac de saisie.
+- `docs/apercu-casiers.png` : rendus de contrôle des casiers (fermé, entrouvert, ouvert).
 
 ### Ce qui n'est PAS testé en jeu
 

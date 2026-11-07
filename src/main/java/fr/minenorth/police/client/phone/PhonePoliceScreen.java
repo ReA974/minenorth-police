@@ -90,6 +90,7 @@ public class PhonePoliceScreen extends PhoneAppBase {
         t.add(new Tab("Citoyens", ModNetwork.V_LIST));
         t.add(new Tab(v.pendingRequests() > 0 ? "Demandes (" + v.pendingRequests() + ")" : "Demandes", ModNetwork.V_REQUESTS));
         t.add(new Tab(v.view() == ModNetwork.V_ALERTS && !v.calls().isEmpty() ? "Alertes (" + v.calls().size() + ")" : "Alertes", ModNetwork.V_ALERTS));
+        t.add(new Tab("Menottés", ModNetwork.V_CUFFS));
         t.add(new Tab("Radars", ModNetwork.V_RADARS));
         t.add(new Tab("Plaques", ModNetwork.V_PLATES));
         t.add(new Tab("Service", SERVICE));
@@ -121,6 +122,7 @@ public class PhonePoliceScreen extends PhoneAppBase {
             case ModNetwork.V_REQUESTS -> send(ModNetwork.A_REQUESTS, null, "", "", 0, 0);
             case ModNetwork.V_ALERTS -> send(ModNetwork.A_ALERTS, null, "", "", 0, 0);
             case ModNetwork.V_RADARS -> send(ModNetwork.A_RADARS, null, "", "", 0, 0);
+            case ModNetwork.V_CUFFS -> send(ModNetwork.A_CUFFS, null, "", "", 0, 0);
             case ModNetwork.V_PLATES -> send(ModNetwork.A_PLATES, null, "", "", 0, 0);
             case ModNetwork.V_ROSTER -> send(ModNetwork.A_ROSTER, null, "", "", 0, 0);
             case ModNetwork.V_DISPATCH -> send(ModNetwork.A_DISPATCH, null, "", "", 0, 0);
@@ -159,6 +161,7 @@ public class PhonePoliceScreen extends PhoneAppBase {
             case ModNetwork.V_REQUESTS -> requests(g, mx, my, y);
             case ModNetwork.V_ALERTS -> alerts(g, mx, my, y);
             case ModNetwork.V_RADARS -> radars(g, mx, my, y);
+            case ModNetwork.V_CUFFS -> cuffs(g, mx, my, y);
             case ModNetwork.V_PLATES -> plates(g, mx, my, y);
             case ModNetwork.V_ROSTER -> roster(g, mx, my, y);
             case ModNetwork.V_DISPATCH -> dispatch(g, mx, my, y);
@@ -423,6 +426,25 @@ public class PhonePoliceScreen extends PhoneAppBase {
     }
 
     // ------------------------------------------------------------------ radars fixes
+
+    /** Menottés connectés (nom, type, ravisseur, temps restant), avec libération à distance : mêmes données que la tablette. */
+    private float cuffs(GuiGraphics g, int mx, int my, float y) {
+        button(g, mx, my, L, y, L + 100, y + 22, "Actualiser", 9, DARK, true, () -> send(ModNetwork.A_CUFFS, null, "", "", 0, 0));
+        y += 30;
+        text(g, v.citizens().size() + " menotté(s) connecté(s)", L, y, 8.5f, R - L, MUTED);
+        y += 14;
+        if (v.citizens().isEmpty()) return wrap(g, "Personne n'est menotté pour le moment.", L, y, 9.5f, R - L, MUTED);
+        for (ModNetwork.Citizen c : v.citizens()) {
+            float h = 34 + lines(c.rpName(), 8.5f, R - L - 24) * 11 + 28;
+            card(g, y, y + h, c.wanted() ? PINK : CYAN);
+            face(g, c.id(), c.name(), L + 12, y + 7, 14);
+            text(g, c.name() + (c.wanted() ? "  (sac de jute)" : ""), L + 32, y + 9, 10, R - L - 44, WHITE);
+            float yy = wrap(g, c.rpName(), L + 12, y + 27, 8.5f, R - L - 24, CYAN);
+            button(g, mx, my, L + 12, yy + 3, R - 8, yy + 25, "Libérer", 9, PINK, true, () -> send(ModNetwork.A_UNCUFF, c.id(), "", "", 0, 0));
+            y += h + 5;
+        }
+        return y;
+    }
 
     private float radars(GuiGraphics g, int mx, int my, float y) {
         field(g, mx, my, plate, L, y, R);
